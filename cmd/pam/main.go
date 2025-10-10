@@ -13,6 +13,7 @@ import (
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 
+	"github.com/charmbracelet/lipgloss"
 	"gopkg.in/yaml.v2"
 
 	"github.com/eduardofuncao/pam/internal/table"
@@ -40,7 +41,7 @@ func main() {
 
 	switch command {
 
-	case "create":
+	case "init":
 		if len(os.Args) < 4 {
 			log.Fatal("Usage: pam create <name> <db-type> <connection-string>")
 		}
@@ -56,7 +57,7 @@ func main() {
 
 		SaveConfig(cfgPath, cfg)
 
-	case "switch":
+	case "switch", "use":
 		if len(os.Args) < 3 {
 			log.Fatal("Usage: pam switch <db-name>")
 		}
@@ -85,7 +86,10 @@ func main() {
 		dbType := cfg.Current.DBType
 		connStr := cfg.Current.DBConnectionString
 		query := cfg.Connections[cfg.Current.Name].Queries[os.Args[2]]
-		queryDB(dbType, connStr, query)
+		columns, data := queryDB(dbType, connStr, query)
+		if err := table.RenderTable(columns, data); err != nil {
+			log.Fatalf("Error rendering table: %v", err)
+		}
 
 	case "list":
 		var objectType string
@@ -121,6 +125,12 @@ func main() {
 			log.Fatalf("Failed to open editor: %v", err)
 		}
 
+	case "status":
+		style := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("171")).
+			Bold(true)
+		fmt.Println(style.Render("✓ Now using:"), fmt.Sprintf("%s/%s", cfg.Current.DBType, cfg.Current.Name))
+
 	case "history":
 		return
 
@@ -129,7 +139,7 @@ func main() {
 	}
 }
 
-func queryDB(dbType, connStr, query string) {
+func queryDB(dbType, connStr, query string) ([]string, [][]string) {
 	db, err := sql.Open(dbType, connStr)
 	if err != nil {
 		log.Fatalf("Error opening database: %v", err)
@@ -177,10 +187,7 @@ func queryDB(dbType, connStr, query string) {
 	if err = rows.Err(); err != nil {
 		log.Fatalf("Error during iteration: %v", err)
 	}
-
-	if err := table.RenderTable(columns, data); err != nil {
-		log.Fatalf("Error rendering table: %v", err)
-	}
+	return columns, data
 }
 
 type Connection struct {
@@ -233,6 +240,7 @@ func loadConfig(path string) (*Config, error) {
 }
 
 func SaveConfig(path string, cfg *Config) error {
+	//TODO: change variable declaration removing the need for filepath package
 	dir := filepath.Dir(path)
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
