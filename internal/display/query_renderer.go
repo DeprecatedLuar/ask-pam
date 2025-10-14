@@ -10,21 +10,11 @@ import (
 )
 
 var (
-	// Maximum width for the content (adjust based on your terminal)
 	maxWidth = 80
-
-	// Styles
-	containerStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("62")).
-		Padding(1, 2).
-		MarginBottom(1).
-		Width(maxWidth)
 
 	queryNameStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("205")).
-		Bold(true).
-		MarginBottom(1)
+		Bold(true)
 
 	keywordStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("86")).
@@ -34,7 +24,6 @@ var (
 		Foreground(lipgloss.Color("243")).
 		Italic(true)
 
-	// SQL keywords that should trigger line breaks
 	breakKeywords = []string{
 		"SELECT", "FROM", "WHERE", "JOIN", "LEFT JOIN", "RIGHT JOIN",
 		"INNER JOIN", "OUTER JOIN", "ON", "AND", "OR", "ORDER BY",
@@ -42,7 +31,6 @@ var (
 		"UPDATE", "DELETE", "SET", "VALUES",
 	}
 
-	// All SQL keywords to highlight
 	allKeywords = append(breakKeywords, []string{
 		"AS", "IN", "NOT", "NULL", "IS", "LIKE", "BETWEEN", "EXISTS",
 		"CASE", "WHEN", "THEN", "ELSE", "END", "DISTINCT", "ALL",
@@ -50,7 +38,6 @@ var (
 )
 
 func formatSQL(query string) string {
-	// Trim whitespace
 	query = strings.TrimSpace(query)
 
 	// Step 1: Protect comments and strings from processing
@@ -61,7 +48,7 @@ func formatSQL(query string) string {
 	commentRegex := regexp.MustCompile(`--[^\n]*`)
 	query = commentRegex.ReplaceAllStringFunc(query, func(match string) string {
 		placeholder := fmt.Sprintf("__COMMENT_%d__", counter)
-		protected[placeholder] = match // Store original, will style later
+		protected[placeholder] = match
 		counter++
 		return placeholder
 	})
@@ -86,7 +73,6 @@ func formatSQL(query string) string {
 
 	// Step 2: Add line breaks before major keywords
 	for _, keyword := range breakKeywords {
-		// Use word boundaries to match whole keywords only
 		pattern := regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(keyword) + `\b`)
 		query = pattern.ReplaceAllStringFunc(query, func(match string) string {
 			upper := strings.ToUpper(match)
@@ -105,11 +91,13 @@ func formatSQL(query string) string {
 	}
 	query = strings.Join(normalized, "\n")
 
-	// Step 4: Wrap long lines (accounting for border padding: 2 on each side + 2 for border = 6 total)
-	wrapWidth := maxWidth - 6
+	// Step 4: Wrap long lines
+	wrapWidth := maxWidth - 2
+	if wrapWidth < 10 {
+		wrapWidth = 10
+	}
 	var wrappedLines []string
 	for _, line := range strings.Split(query, "\n") {
-		// Check if line starts with a keyword
 		startsWithKeyword := false
 		keywordPrefix := ""
 		for _, kw := range breakKeywords {
@@ -121,17 +109,14 @@ func formatSQL(query string) string {
 		}
 
 		if startsWithKeyword && len(line) > wrapWidth {
-			// Split the line: keyword on first line, rest indented
 			rest := strings.TrimSpace(line[len(keywordPrefix):])
 			wrappedLines = append(wrappedLines, keywordPrefix)
 			
-			// Wrap the rest with indentation
 			wrapped := wordwrap.String(rest, wrapWidth-2)
 			for _, wl := range strings.Split(wrapped, "\n") {
 				wrappedLines = append(wrappedLines, "  "+wl)
 			}
 		} else if len(line) > wrapWidth {
-			// Regular line wrapping with indentation for continuation
 			wrapped := wordwrap.String(line, wrapWidth)
 			splitLines := strings.Split(wrapped, "\n")
 			for i, wl := range splitLines {
@@ -157,7 +142,6 @@ func formatSQL(query string) string {
 
 	// Step 6: Restore protected content and apply styles
 	for placeholder, original := range protected {
-		// Apply comment style to comments
 		if strings.HasPrefix(placeholder, "__COMMENT_") || strings.HasPrefix(placeholder, "__MLCOMMENT_") {
 			query = strings.ReplaceAll(query, placeholder, commentStyle.Render(original))
 		} else {
@@ -171,6 +155,13 @@ func formatSQL(query string) string {
 func RenderQuery(name, query string) string {
 	title := queryNameStyle.Render("◆ " + name)
 	formattedSQL := formatSQL(query)
-	content := lipgloss.JoinVertical(lipgloss.Left, title, formattedSQL)
-	return containerStyle.Render(content)
+	
+	// Indent the SQL
+	lines := strings.Split(formattedSQL, "\n")
+	for i, line := range lines {
+		lines[i] = "  " + line
+	}
+	indentedSQL := strings.Join(lines, "\n")
+	
+	return title + "\n" + indentedSQL
 }

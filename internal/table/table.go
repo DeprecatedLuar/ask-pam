@@ -159,9 +159,9 @@ func (m TableModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.visibleCols > numColumns {
 			m.visibleCols = numColumns
 		}
-    // TODO: remove magic variable: this is an offset so that the table does not take
+		// TODO: remove magic variable: this is an offset so that the table does not take
 		//       the full terminal height
-		m.visibleRows = m.height - 7 
+		m.visibleRows = m.height - 7
 		if m.visibleRows > numRows {
 			m.visibleRows = numRows
 		}
@@ -240,6 +240,7 @@ func (m TableModel) formatCell(content string) string {
 func (m TableModel) renderFooter() string {
 	footer := fmt.Sprintf("\nPosition: Row %d/%d, Col %d/%d | Scroll: H/L (left/right), K/J (up/down) | Copy: y/enter",
 		m.selectedRow+1, len(m.data), m.selectedCol+1, len(m.columns))
+	footer += fmt.Sprintf("\nSelected cell: %s", m.data[m.selectedRow][m.selectedCol])
 	return lipgloss.NewStyle().Faint(true).Render(footer)
 }
 
@@ -248,4 +249,4 @@ func RenderTable(columns []string, data [][]string) error {
 	p := tea.NewProgram(model)
 	_, err := p.Run()
 	return err
-	}
+}

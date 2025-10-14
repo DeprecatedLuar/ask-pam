@@ -117,26 +117,26 @@ func main() {
 			log.Fatalf("Error rendering table: %v", err)
 		}
 
-	case "list":
-		var objectType string
-		if len(os.Args) < 3 {
-			objectType = ""
-		} else {
-			objectType = os.Args[2]
+case "list":
+	var objectType string
+	if len(os.Args) < 3 {
+		objectType = ""
+	} else {
+		objectType = os.Args[2]
+	}
+
+	switch objectType {
+	case "connections":
+		for name, connection := range cfg.Connections {
+			fmt.Printf("◆ %s (%s)\n", name, connection.ConnString)
 		}
 
-		switch objectType {
-		case "connections":
-			for name, connection := range cfg.Connections {
-				fmt.Printf("◆ %s (%s)\n", name, connection.ConnString)
-			}
-
-		case "", "queries":
-			for name, query := range cfg.Connections[cfg.CurrentConnection].Queries {
-				fmt.Println(display.RenderQuery(name, query.SQL))
-			}
+	case "", "queries":
+		for name, query := range cfg.Connections[cfg.CurrentConnection].Queries {
+			fmt.Println(display.RenderQuery(name, query.SQL))
+			fmt.Println()
 		}
-
+	}
 	case "edit":
 		editor := os.Getenv("EDITOR")
 		if editor == "" {
