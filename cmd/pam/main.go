@@ -15,7 +15,7 @@ import (
 
 	"github.com/eduardofuncao/pam/internal/config"
 	"github.com/eduardofuncao/pam/internal/db"
-	"github.com/eduardofuncao/pam/internal/display"
+	"github.com/eduardofuncao/pam/internal/editor"
 	"github.com/eduardofuncao/pam/internal/table"
 )
 
@@ -100,8 +100,22 @@ func main() {
 		if len(os.Args) < 3 {
 			log.Fatal("Usage:pam query/run <query-name>")
 		}
+
+		editMode := false
+		if len(os.Args) > 3 {
+			if os.Args[3] == "--edit" || os.Args[3] == "-e" {
+				editMode = true
+			}
+		}
+
 		currConn := cfg.Connections[cfg.CurrentConnection]
 		query := currConn.Queries[os.Args[2]]
+
+		editedQuery, submitted, err := editor.EditQuery(query, editMode)
+		if submitted {
+			cfg.Connections[cfg.CurrentConnection].Queries[query.Name] = editedQuery
+			cfg.Save()
+		}
 
 		err = currConn.Open()
 		if err != nil {
@@ -113,30 +127,38 @@ func main() {
 			log.Fatal("Could not execute Query")
 		}
 
-		if err := table.RenderTable(columns, data); err != nil {
+		if err := table.Render(columns, data); err != nil {
 			log.Fatalf("Error rendering table: %v", err)
 		}
 
-case "list":
-	var objectType string
-	if len(os.Args) < 3 {
-		objectType = ""
-	} else {
-		objectType = os.Args[2]
-	}
-
-	switch objectType {
-	case "connections":
-		for name, connection := range cfg.Connections {
-			fmt.Printf("◆ %s (%s)\n", name, connection.ConnString)
+	case "list":
+		if len(os.Args) < 3 {
+			log.Fatal("Usage:pam list [queries/connections]")
 		}
 
-	case "", "queries":
-		for name, query := range cfg.Connections[cfg.CurrentConnection].Queries {
-			fmt.Println(display.RenderQuery(name, query.SQL))
-			fmt.Println()
+		var objectType string
+		if len(os.Args) < 3 {
+			objectType = ""
+		} else {
+			objectType = os.Args[2]
 		}
-	}
+
+		switch objectType {
+		case "connections":
+			for name, connection := range cfg.Connections {
+				fmt.Printf("◆ %s (%s)\n", name, connection.ConnString)
+			}
+
+		case "", "queries":
+			titleStyle := lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.Color("205"))
+
+			for _, query := range cfg.Connections[cfg.CurrentConnection].Queries {
+				fmt.Println(titleStyle.Render("\n◆ " + query.Name))
+				fmt.Println(editor.HighlightSQL(editor.FormatSQLWithLineBreaks(query.SQL)))
+			}
+		}
 	case "edit":
 		editor := os.Getenv("EDITOR")
 		if editor == "" {

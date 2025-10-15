@@ -1,0 +1,164 @@
+package editor
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/charmbracelet/bubbles/textarea"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/eduardofuncao/pam/internal/db"
+)
+
+// EditorModel is a simple query editor that returns the edited query
+type EditorModel struct {
+	textArea  textarea.Model
+	width     int
+	height    int
+	query     db.Query
+	submitted bool
+}
+
+// NewEditor creates a new query editor with the given initial query
+func NewEditor(initialQuery db.Query) EditorModel {
+	ta := textarea.New()
+	ta.Placeholder = "Enter your query..."
+	ta.Focus()
+	ta.CharLimit = 10000
+	ta.SetWidth(80)
+
+	// Format the initial SQL with line breaks
+	formattedSQL := FormatSQLWithLineBreaks(initialQuery.SQL)
+	ta.SetValue(formattedSQL)
+
+	// Set height based on content (with a reasonable min/max)
+	lineCount := countLines(formattedSQL)
+	height := min(max(lineCount, 3), 15) // Min 3 lines, max 15 lines
+	ta.SetHeight(height)
+
+	return EditorModel{
+		textArea:  ta,
+		query:     initialQuery,
+		submitted: false,
+	}
+}
+
+func (m EditorModel) Init() tea.Cmd {
+	return textarea.Blink
+}
+
+func (m EditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyCtrlC, tea.KeyEsc:
+			return m, tea.Quit
+		case tea.KeyCtrlD: // Use Ctrl+D for execution
+			m.query.SQL = strings.TrimSpace(m.textArea.Value())
+			m.submitted = true
+			return m, tea.Quit
+		}
+		// Check for Ctrl+Enter (might vary by terminal)
+		if msg.Type == tea.KeyEnter && msg.Alt {
+			m.query.SQL = strings.TrimSpace(m.textArea.Value())
+			m.submitted = true
+			return m, tea.Quit
+		}
+
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		// Adjust textarea width based on window, but not height
+		m.textArea.SetWidth(min(m.width-4, 120))
+	}
+
+	m.textArea, cmd = m.textArea.Update(msg)
+
+	// Dynamically adjust height as content changes
+	lineCount := countLines(m.textArea.Value())
+	newHeight := min(max(lineCount, 3), 15)
+	if newHeight != m.textArea.Height() {
+		m.textArea.SetHeight(newHeight)
+	}
+
+	return m, cmd
+}
+
+func (m EditorModel) View() string {
+	titleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("205"))
+
+	helpStyle := lipgloss.NewStyle().
+		Faint(true)
+
+	separatorStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("238"))
+
+	var content string
+	if m.submitted {
+		// After submission, show highlighted SQL
+		highlightedSQL := HighlightSQL(m.textArea.Value())
+		content = fmt.Sprintf(
+			"%s\n%s\n%s",
+			titleStyle.Render("\n◆ "+m.query.Name),
+			highlightedSQL,
+			separatorStyle.Render("──────────────────────────────────────────────────────────"),
+		)
+	} else {
+		// While editing, show the textarea with help text
+		content = fmt.Sprintf(
+			"%s\n%s\n%s\n%s",
+			titleStyle.Render("\n◆ "+m.query.Name),
+			m.textArea.View(),
+			helpStyle.Render("Ctrl+D: Execute Query | Esc/Ctrl+C: Cancel"),
+			separatorStyle.Render("──────────────────────────────────────────────────────────"),
+		)
+	}
+
+	return content + "\n"
+}
+
+// GetQuery returns the submitted query (call after program exits)
+func (m EditorModel) GetQuery() (db.Query, bool) {
+	return m.query, m.submitted
+}
+
+// EditQuery shows a query editor and returns the edited query.
+// Returns the query and true if submitted, empty string and false if cancelled.
+func EditQuery(query db.Query, edit bool) (db.Query, bool, error) {
+	if !edit {
+		m := NewEditor(query)
+		m.submitted = true
+		fmt.Print(m.View())
+		return query, false, nil
+	}
+
+	m := NewEditor(query)
+	p := tea.NewProgram(m)
+
+	finalModel, err := p.Run()
+	if err != nil {
+		return db.Query{}, false, err
+	}
+
+	editor := finalModel.(EditorModel)
+	query, submitted := editor.GetQuery()
+	return query, submitted, nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}

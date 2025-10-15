@@ -32,7 +32,14 @@ func NewConnection(name, dbType, connStr, user, pass string) *Connection {
 }
 
 func (c *Connection) Open() error {
-	db, err := sql.Open(c.DBType, c.ConnString)
+	dbType := c.DBType
+	connString := c.ConnString
+
+	if dbType == "oracle" {
+		dbType = "godror"
+	}
+
+	db, err := sql.Open(dbType, connString)
 	if err != nil {
 		return fmt.Errorf("open db: %w", err)
 	}
