@@ -1,6 +1,8 @@
 package table
 
 import (
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -17,12 +19,13 @@ type Model struct {
 	visibleRows     int
 	columns         []string
 	data            [][]string
+	elapsed time.Duration
 	blinkCopiedCell bool
 }
 
 type blinkMsg struct{}
 
-func New(columns []string, data [][]string) Model {
+func New(columns []string, data [][]string, elapsed time.Duration) Model {
 	return Model{
 		selectedRow: 0,
 		selectedCol: 0,
@@ -30,6 +33,7 @@ func New(columns []string, data [][]string) Model {
 		offsetY:     0,
 		columns:     columns,
 		data:        data,
+		elapsed: elapsed,
 	}
 }
 

@@ -10,7 +10,6 @@ import (
 	"github.com/eduardofuncao/pam/internal/db"
 )
 
-// EditorModel is a simple query editor that returns the edited query
 type EditorModel struct {
 	textArea  textarea.Model
 	width     int
@@ -19,7 +18,6 @@ type EditorModel struct {
 	submitted bool
 }
 
-// NewEditor creates a new query editor with the given initial query
 func NewEditor(initialQuery db.Query) EditorModel {
 	ta := textarea.New()
 	ta.Placeholder = "Enter your query..."
@@ -27,11 +25,9 @@ func NewEditor(initialQuery db.Query) EditorModel {
 	ta.CharLimit = 10000
 	ta.SetWidth(80)
 
-	// Format the initial SQL with line breaks
 	formattedSQL := FormatSQLWithLineBreaks(initialQuery.SQL)
 	ta.SetValue(formattedSQL)
 
-	// Set height based on content (with a reasonable min/max)
 	lineCount := countLines(formattedSQL)
 	height := min(max(lineCount, 3), 15) // Min 3 lines, max 15 lines
 	ta.SetHeight(height)
@@ -60,23 +56,15 @@ func (m EditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.submitted = true
 			return m, tea.Quit
 		}
-		// Check for Ctrl+Enter (might vary by terminal)
-		if msg.Type == tea.KeyEnter && msg.Alt {
-			m.query.SQL = strings.TrimSpace(m.textArea.Value())
-			m.submitted = true
-			return m, tea.Quit
-		}
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		// Adjust textarea width based on window, but not height
 		m.textArea.SetWidth(min(m.width-4, 120))
 	}
 
 	m.textArea, cmd = m.textArea.Update(msg)
 
-	// Dynamically adjust height as content changes
 	lineCount := countLines(m.textArea.Value())
 	newHeight := min(max(lineCount, 3), 15)
 	if newHeight != m.textArea.Height() {
@@ -99,7 +87,6 @@ func (m EditorModel) View() string {
 
 	var content string
 	if m.submitted {
-		// After submission, show highlighted SQL
 		highlightedSQL := HighlightSQL(m.textArea.Value())
 		content = fmt.Sprintf(
 			"%s\n%s\n%s",
@@ -108,7 +95,6 @@ func (m EditorModel) View() string {
 			separatorStyle.Render("──────────────────────────────────────────────────────────"),
 		)
 	} else {
-		// While editing, show the textarea with help text
 		content = fmt.Sprintf(
 			"%s\n%s\n%s\n%s",
 			titleStyle.Render("\n◆ "+m.query.Name),
@@ -121,13 +107,10 @@ func (m EditorModel) View() string {
 	return content + "\n"
 }
 
-// GetQuery returns the submitted query (call after program exits)
 func (m EditorModel) GetQuery() (db.Query, bool) {
 	return m.query, m.submitted
 }
 
-// EditQuery shows a query editor and returns the edited query.
-// Returns the query and true if submitted, empty string and false if cancelled.
 func EditQuery(query db.Query, edit bool) (db.Query, bool, error) {
 	if !edit {
 		m := NewEditor(query)

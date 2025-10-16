@@ -62,7 +62,7 @@ func (m Model) handleWindowResize(msg tea.WindowSizeMsg) Model {
 	}
 	
 	// Offset so table doesn't take full terminal height
-	m.visibleRows = m.height - 7
+	m.visibleRows = m.height - 9
 	if m.visibleRows > m.numRows() {
 		m.visibleRows = m.numRows()
 	}

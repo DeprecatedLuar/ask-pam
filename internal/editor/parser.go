@@ -31,19 +31,14 @@ func FormatSQLWithLineBreaks(sql string) string {
 
 	formatted := sql
 
-	// Process keywords (longer phrases first to avoid breaking them up)
 	for _, keyword := range sqlKeywords {
-		// Create regex pattern for word boundaries
-		// This ensures we match the keyword as a whole phrase
 		pattern := regexp.MustCompile(`(?i)\s+` + regexp.QuoteMeta(keyword) + `\s+`)
 		
 		formatted = pattern.ReplaceAllStringFunc(formatted, func(match string) string {
-			// Preserve the trailing space, add newline before keyword
 			return "\n" + strings.TrimSpace(match) + " "
 		})
 	}
 
-	// Clean up extra newlines and trim
 	lines := strings.Split(formatted, "\n")
 	var cleanedLines []string
 	for _, line := range lines {
@@ -56,7 +51,6 @@ func FormatSQLWithLineBreaks(sql string) string {
 	return strings.Join(cleanedLines, "\n")
 }
 
-// highlightSQL applies syntax highlighting to SQL keywords
 func HighlightSQL(sql string) string {
 	keywordStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("86")).
@@ -67,9 +61,7 @@ func HighlightSQL(sql string) string {
 
 	highlighted := sql
 
-	// Highlight SQL keywords using word boundaries to avoid partial matches
 	for _, keyword := range highlightKeywords {
-		// Use regex with word boundaries to match whole words only
 		pattern := regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(keyword) + `\b`)
 		
 		highlighted = pattern.ReplaceAllStringFunc(highlighted, func(match string) string {
@@ -77,7 +69,6 @@ func HighlightSQL(sql string) string {
 		})
 	}
 
-	// Highlight strings (simple implementation for single quotes)
 	var result strings.Builder
 	inString := false
 	for _, char := range highlighted {
@@ -92,8 +83,6 @@ func HighlightSQL(sql string) string {
 		} else if inString {
 			result.WriteString(stringStyle.Render(string(char)))
 		} else {
-			// Check if this is part of an already styled keyword
-			// (this is a simplification - in practice the styled text already has escape codes)
 			result.WriteRune(char)
 		}
 	}

@@ -54,8 +54,8 @@ func (m Model) renderDataRow(rowIndex int) string {
 }
 
 func (m Model) renderFooter() string {
-	footer := fmt.Sprintf("\nPosition: Row %d/%d, Col %d/%d | Scroll: H/L (left/right), K/J (up/down) | Copy: y/enter",
-		m.selectedRow+1, m.numRows(), m.selectedCol+1, m.numCols())
+	footer := fmt.Sprintf("\nIn %.2fs | Position: Row %d/%d, Col %d/%d | Scroll: H/L (left/right), K/J (up/down) | Copy: y/enter",
+		m.elapsed.Seconds(), m.selectedRow+1, m.numRows(), m.selectedCol+1, m.numCols())
 	// footer += fmt.Sprintf("\nSelected cell: %s", m.data[m.selectedRow][m.selectedCol])
 	return lipgloss.NewStyle().Faint(true).Render(footer)
 }

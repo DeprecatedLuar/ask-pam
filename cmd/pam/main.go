@@ -5,7 +5,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"time"
 
+	_ "github.com/ClickHouse/clickhouse-go/v2"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/godror/godror"
 	_ "github.com/lib/pq"
@@ -13,9 +15,11 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
+	_ "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/eduardofuncao/pam/internal/config"
 	"github.com/eduardofuncao/pam/internal/db"
 	"github.com/eduardofuncao/pam/internal/editor"
+	"github.com/eduardofuncao/pam/internal/spinner"
 	"github.com/eduardofuncao/pam/internal/table"
 )
 
@@ -122,12 +126,17 @@ func main() {
 			log.Fatalf("Could not open the connection to %s/%s", currConn.DBType, currConn.Name)
 		}
 
+		start := time.Now() 
+		done := make(chan struct{})
+		go spinner.Wait(done)
 		columns, data, err := currConn.Query(query.Name)
+		done <- struct{}{}
+		elapsed := time.Since(start)
 		if err != nil {
 			log.Fatal("Could not execute Query")
 		}
 
-		if err := table.Render(columns, data); err != nil {
+		if err := table.Render(columns, data, elapsed); err != nil {
 			log.Fatalf("Error rendering table: %v", err)
 		}
 
