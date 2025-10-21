@@ -16,11 +16,6 @@ type Connection struct {
 	Queries    map[string]Query
 }
 
-type Query struct {
-	Name string
-	SQL  string
-}
-
 func NewConnection(name, dbType, connStr, user, pass string) *Connection {
 	return &Connection{
 		Name:       name,

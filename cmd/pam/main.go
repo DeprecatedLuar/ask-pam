@@ -1,18 +1,16 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/godror/godror"
-	_ "github.com/lib/pq"
-	_ "github.com/mattn/go-sqlite3"
-
 	"github.com/charmbracelet/lipgloss"
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/eduardofuncao/pam/internal/config"
 	"github.com/eduardofuncao/pam/internal/db"
@@ -46,21 +44,25 @@ func main() {
 			log.Fatal("Usage: pam create <name> <db-type> <connection-string> <user> <password>")
 		}
 
-		var conn *db.Connection
-		if len(os.Args) < 7 { //no user/pass
-			conn = db.NewConnection(os.Args[2], os.Args[3], os.Args[4], "", "")
-		} else {
-			conn = db.NewConnection(os.Args[2], os.Args[3], os.Args[4], os.Args[5], os.Args[6])
+		conn, err := db.CreateConnection(os.Args[2], os.Args[3], os.Args[4])
+		if err != nil {
+			log.Fatalf("Could not create connection interface: %s/%s, %s", os.Args[3], os.Args[2], err)
 		}
 
-		err := conn.Open()
+		err = conn.Open()
 		if err != nil {
-			log.Fatalf("Could not establish connection to: %s/%s: %s", conn.DBType, conn.Name, err)
+			log.Fatalf("Could not establish connection to: %s/%s: %s",
+				conn.GetDbType(), conn.GetName(), err)
 		}
 		defer conn.Close()
 
-		cfg.CurrentConnection = conn.Name
-		cfg.Connections[cfg.CurrentConnection] = conn
+		err = conn.Ping()
+		if err != nil {
+			log.Fatalf("Could not communicate with the database: %s/%s, %s", os.Args[3], os.Args[2], err)
+		}
+
+		cfg.CurrentConnection = conn.GetName()
+		cfg.Connections[cfg.CurrentConnection] = config.ToConnectionYAML(conn)
 		cfg.Save()
 
 	case "switch", "use":
@@ -87,11 +89,14 @@ func main() {
 
 		_, ok := cfg.Connections[cfg.CurrentConnection]
 		if !ok {
-			cfg.Connections[cfg.CurrentConnection] = &db.Connection{}
+			cfg.Connections[cfg.CurrentConnection] = config.ConnectionYAML{}
 		}
-		cfg.Connections[cfg.CurrentConnection].Queries[os.Args[2]] = db.Query{
+		queries := cfg.Connections[cfg.CurrentConnection].Queries
+
+		queries[os.Args[2]] = db.Query{
 			Name: os.Args[2],
 			SQL:  os.Args[3],
+			Id:  db.GetNextQueryId(queries),
 		}
 		err := cfg.Save()
 		if err != nil {
@@ -110,8 +115,8 @@ func main() {
 			}
 		}
 
-		currConn := cfg.Connections[cfg.CurrentConnection]
-		query := currConn.Queries[os.Args[2]]
+		currConn := config.FromConnectionYaml(cfg.Connections[cfg.CurrentConnection])
+		query := currConn.GetQueries()[os.Args[2]]
 
 		editedQuery, submitted, err := editor.EditQuery(query, editMode)
 		if submitted {
@@ -121,18 +126,25 @@ func main() {
 
 		err = currConn.Open()
 		if err != nil {
-			log.Fatalf("Could not open the connection to %s/%s: %s", currConn.DBType, currConn.Name, err)
+			log.Fatalf("Could not open the connection to %s/%s: %s", currConn.GetDbType(), currConn.GetName(), err)
 		}
 
-		start := time.Now() 
+		start := time.Now()
 		done := make(chan struct{})
 		go spinner.Wait(done)
-		columns, data, err := currConn.Query(query.Name)
+
+		rows, err := currConn.Query(query.Name)
+		if err != nil {
+			log.Fatal("Could not complete query: ", err)
+		}
+		sqlRows, ok := rows.(*sql.Rows)
+		if !ok {
+			log.Fatal("Query did not return *sql.Rows")
+		}
+		columns, data, err := db.FormatTableData(sqlRows)
+
 		done <- struct{}{}
 		elapsed := time.Since(start)
-		if err != nil {
-			log.Fatal("Could not execute Query:", err)
-		}
 
 		if err := table.Render(columns, data, elapsed); err != nil {
 			log.Fatalf("Error rendering table: %v", err)
@@ -166,6 +178,7 @@ func main() {
 				fmt.Println(editor.HighlightSQL(editor.FormatSQLWithLineBreaks(query.SQL)))
 			}
 		}
+
 	case "edit":
 		editor := os.Getenv("EDITOR")
 		if editor == "" {

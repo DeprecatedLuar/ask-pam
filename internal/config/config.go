@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/eduardofuncao/pam/internal/db"
 	"gopkg.in/yaml.v2"
 )
 
@@ -14,7 +13,7 @@ var CfgFile = filepath.Join(CfgPath, "config.yaml")
 
 type Config struct {
 	CurrentConnection string                    `yaml:"current_connection"`
-	Connections       map[string]*db.Connection `yaml:"connections"`
+	Connections       map[string]ConnectionYAML `yaml:"connections"`
 	Style             Style                     `yaml:"style"`
 	History           History                   `yaml:"history"`
 }
@@ -34,7 +33,7 @@ func LoadConfig(path string) (*Config, error) {
 			fmt.Println("Creating blank config file at", CfgFile)
 			cfg := &Config{
 				CurrentConnection: "",
-				Connections:       make(map[string]*db.Connection),
+				Connections:       make(map[string]ConnectionYAML),
 				Style:             Style{},
 				History:           History{},
 			}
