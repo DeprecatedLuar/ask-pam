@@ -1,6 +1,7 @@
 package table
 
 import (
+	"strings"
 	"time"
 
 	"github.com/atotto/clipboard"
@@ -93,14 +94,84 @@ func (m Model) pageDown() Model {
 	return m
 }
 
-func (m Model) copySelectedCell() (Model, tea.Cmd) {
-	if m.selectedRow >= 0 && m.selectedRow < m.numRows() &&
-		m.selectedCol >= 0 && m.selectedCol < m.numCols() {
-		go clipboard.WriteAll(m.data[m.selectedRow][m.selectedCol])
-		m.blinkCopiedCell = true
-		return m, tea.Tick(time.Millisecond*400, func(time.Time) tea.Msg {
-			return blinkMsg{}
-		})
+// func (m Model) copySelectedCell() (Model, tea.Cmd) {
+// 	if m.selectedRow >= 0 && m.selectedRow < m.numRows() &&
+// 		m.selectedCol >= 0 && m.selectedCol < m.numCols() {
+// 		go clipboard.WriteAll(m.data[m.selectedRow][m.selectedCol])
+// 		m.blinkCopiedCell = true
+// 		return m, tea.Tick(time.Millisecond*400, func(time.Time) tea.Msg {
+// 			return blinkMsg{}
+// 		})
+// 	}
+// 	return m, nil
+// }
+
+func (m Model) toggleVisualMode() (Model, tea.Cmd) {
+	m.visualMode = !m.visualMode
+	
+	if m.visualMode {
+		m.visualStartRow = m.selectedRow
+		m.visualStartCol = m.selectedCol
 	}
+	
 	return m, nil
+}
+
+func (m Model) getSelectionBounds() (minRow, maxRow, minCol, maxCol int) {
+	if !m.visualMode {
+		return m.selectedRow, m.selectedRow, m.selectedCol, m.selectedCol
+	}
+	
+	// Multi-cell selection
+	minRow = min(m.visualStartRow, m.selectedRow)
+	maxRow = max(m.visualStartRow, m.selectedRow)
+	minCol = min(m.visualStartCol, m.selectedCol)
+	maxCol = max(m.visualStartCol, m.selectedCol)
+	
+	return
+}
+
+func (m Model) isCellInSelection(row, col int) bool {
+	minRow, maxRow, minCol, maxCol := m.getSelectionBounds()
+	return row >= minRow && row <= maxRow && col >= minCol && col <= maxCol
+}
+
+func (m Model) copySelection() (Model, tea.Cmd) {
+	minRow, maxRow, minCol, maxCol := m.getSelectionBounds()
+	
+	var result strings.Builder
+	
+	// If multiple cells are selected, include headers
+	if m.visualMode {
+		for col := minCol; col <= maxCol; col++ {
+			if col > minCol {
+				result.WriteString("\t")
+			}
+			result.WriteString(m.columns[col])
+		}
+		result.WriteString("\n")
+	}
+	
+	for row := minRow; row <= maxRow; row++ {
+		for col := minCol; col <= maxCol; col++ {
+			if col > minCol {
+				result.WriteString("\t")
+			}
+			result.WriteString(m.data[row][col])
+		}
+		if row < maxRow {
+			result.WriteString("\n")
+		}
+	}
+	
+	content := result.String()
+	clipboard.WriteAll(content)
+	
+	m.visualMode = false
+	m.blinkCopiedCell = true
+	
+	return m, func() tea.Msg {
+		time.Sleep(200 * time.Millisecond)
+		return blinkMsg{}
+	}
 }

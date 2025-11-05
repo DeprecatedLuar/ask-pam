@@ -22,6 +22,9 @@ func (m Model) View() string {
 		b.WriteString(m.renderDataRow(i))
 		b.WriteString("\n")
 	}
+	if len(m.data) < 1 {
+		b.WriteString("Nothing to show here...")
+	}
 
 	b.WriteString(m.renderFooter())
 
@@ -61,7 +64,7 @@ func (m Model) renderFooter() string {
 }
 
 func (m Model) getCellStyle(row, col int) lipgloss.Style {
-	if row == m.selectedRow && col == m.selectedCol {
+	if m.isCellInSelection(row, col) {
 		if m.blinkCopiedCell {
 			return copiedBlinkStyle
 		}

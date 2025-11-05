@@ -14,8 +14,3 @@ type DatabaseConnection interface {
 	SetQueries(map[string]Query)
 }
 
-type Query struct {
-	Name string
-	Id   int
-	SQL  string
-}

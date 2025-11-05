@@ -19,8 +19,11 @@ type Model struct {
 	visibleRows     int
 	columns         []string
 	data            [][]string
-	elapsed time.Duration
+	elapsed         time.Duration
 	blinkCopiedCell bool
+	visualMode      bool
+	visualStartRow  int
+	visualStartCol  int
 }
 
 type blinkMsg struct{}
@@ -33,7 +36,8 @@ func New(columns []string, data [][]string, elapsed time.Duration) Model {
 		offsetY:     0,
 		columns:     columns,
 		data:        data,
-		elapsed: elapsed,
+		elapsed:     elapsed,
+		visualMode:  false,
 	}
 }
 
@@ -48,4 +52,3 @@ func (m Model) numRows() int {
 func (m Model) numCols() int {
 	return len(m.columns)
 }
-

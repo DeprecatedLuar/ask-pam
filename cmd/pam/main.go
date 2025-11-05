@@ -82,7 +82,7 @@ func main() {
 		}
 		fmt.Printf("connected to: %s/%s\n", cfg.Connections[cfg.CurrentConnection].DBType, cfg.CurrentConnection)
 
-	case "add":
+	case "add", "save":
 		if len(os.Args) < 4 {
 			log.Fatal("Usage: pam add <query-name> <query>")
 		}
@@ -96,12 +96,32 @@ func main() {
 		queries[os.Args[2]] = db.Query{
 			Name: os.Args[2],
 			SQL:  os.Args[3],
-			Id:  db.GetNextQueryId(queries),
+			Id:   db.GetNextQueryId(queries),
 		}
 		err := cfg.Save()
 		if err != nil {
 			log.Fatal("Could not save configuration file")
 		}
+
+	case "remove", "delete":
+		if len(os.Args) < 3 {
+			log.Fatal("Usage: pam remove <query-name>")
+		}
+		
+		conn := cfg.Connections[cfg.CurrentConnection]
+		queries := conn.Queries
+
+		query, exists := db.FindQueryWithSelector(queries, os.Args[2])
+		if exists{
+			delete(conn.Queries, query.Name)
+		} else {
+			log.Fatalf("Query %s could not be found", os.Args[2])
+		}
+		err := cfg.Save()
+		if err != nil {
+			log.Fatal("Could not save configuration file")
+		}
+		
 
 	case "query", "run":
 		if len(os.Args) < 3 {
@@ -116,7 +136,13 @@ func main() {
 		}
 
 		currConn := config.FromConnectionYaml(cfg.Connections[cfg.CurrentConnection])
-		query := currConn.GetQueries()[os.Args[2]]
+
+		queries := currConn.GetQueries()
+		selector := os.Args[2]
+		query, found := db.FindQueryWithSelector(queries, selector)
+		if !found {
+			log.Fatalf("Could not find query with name/id: %v", selector)
+		}
 
 		editedQuery, submitted, err := editor.EditQuery(query, editMode)
 		if submitted {
@@ -174,7 +200,8 @@ func main() {
 				Foreground(lipgloss.Color("205"))
 
 			for _, query := range cfg.Connections[cfg.CurrentConnection].Queries {
-				fmt.Println(titleStyle.Render("\n◆ " + query.Name))
+				formatedItem := fmt.Sprintf("\n◆ %d/%s", query.Id, query.Name)
+				fmt.Println(titleStyle.Render(formatedItem))
 				fmt.Println(editor.HighlightSQL(editor.FormatSQLWithLineBreaks(query.SQL)))
 			}
 		}
@@ -201,7 +228,7 @@ func main() {
 		fmt.Println(style.Render("✓ Now using:"), fmt.Sprintf("%s/%s", currConn.DBType, currConn.Name))
 
 	case "history":
-		fmt.Println("Not implemented")
+		fmt.Println("To be implemented in future releases...")
 
 	default:
 		log.Fatalf("Unknown command: %s", command)

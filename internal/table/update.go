@@ -45,8 +45,11 @@ func (m Model) handleKeyPress(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "pgdown", "ctrl+d":
 		return m.pageDown(), nil
 
+	case "v":
+		return m.toggleVisualMode()
+
 	case "y", "enter":
-		return m.copySelectedCell()
+		return m.copySelection()
 	}
 
 	return m, nil
