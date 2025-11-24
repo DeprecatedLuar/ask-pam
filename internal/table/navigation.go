@@ -146,17 +146,17 @@ func (m Model) copySelection() (Model, tea.Cmd) {
 			if col > minCol {
 				result.WriteString("\t")
 			}
-			result.WriteString(m.columns[col])
+			result.WriteString(m.tableData.Columns[col])
 		}
 		result.WriteString("\n")
 	}
-	
+
 	for row := minRow; row <= maxRow; row++ {
 		for col := minCol; col <= maxCol; col++ {
 			if col > minCol {
 				result.WriteString("\t")
 			}
-			result.WriteString(m.data[row][col])
+			result.WriteString(m.tableData.Rows[row][col].Value)
 		}
 		if row < maxRow {
 			result.WriteString("\n")

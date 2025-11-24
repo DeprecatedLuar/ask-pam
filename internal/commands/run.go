@@ -64,12 +64,16 @@ func Run(cfg *config.Config) {
 	if !ok {
 		log.Fatal("Query did not return *sql.Rows")
 	}
-	columns, data, err := db.FormatTableData(sqlRows)
+
+	tableData, err := db.BuildTableData(sqlRows, query.SQL, currConn)
+	if err != nil {
+		log.Fatalf("Error building table data: %v", err)
+	}
 
 	done <- struct{}{}
 	elapsed := time.Since(start)
 
-	if err := table.Render(columns, data, elapsed); err != nil {
+	if err := table.Render(tableData, elapsed); err != nil {
 		log.Fatalf("Error rendering table: %v", err)
 	}
 }
@@ -118,12 +122,16 @@ func executeOneShot(currConn db.DatabaseConnection) {
 	if !ok {
 		log.Fatal("Query did not return *sql.Rows")
 	}
-	columns, data, err := db.FormatTableData(sqlRows)
+
+	tableData, err := db.BuildTableData(sqlRows, editedQuery.SQL, currConn)
+	if err != nil {
+		log.Fatalf("Error building table data: %v", err)
+	}
 
 	done <- struct{}{}
 	elapsed := time.Since(start)
 
-	if err := table.Render(columns, data, elapsed); err != nil {
+	if err := table.Render(tableData, elapsed); err != nil {
 		log.Fatalf("Error rendering table: %v", err)
 	}
 }
@@ -145,12 +153,16 @@ func executeRawSQL(currConn db.DatabaseConnection, query string) {
 	if !ok {
 		log.Fatal("Query did not return *sql.Rows")
 	}
-	columns, data, err := db.FormatTableData(sqlRows)
+
+	tableData, err := db.BuildTableData(sqlRows, query, currConn)
+	if err != nil {
+		log.Fatalf("Error building table data: %v", err)
+	}
 
 	done <- struct{}{}
 	elapsed := time.Since(start)
 
-	if err := table.Render(columns, data, elapsed); err != nil {
+	if err := table.Render(tableData, elapsed); err != nil {
 		log.Fatalf("Error rendering table: %v", err)
 	}
 }

@@ -56,3 +56,7 @@ func (oc *OracleConnection) Query(queryName string, args ...any) (any, error) {
 func (oc *OracleConnection) QueryDirect(sql string, args ...any) (any, error) {
 	return oc.db.Query(sql, args...)
 }
+
+func (oc *OracleConnection) GetDB() *sql.DB {
+	return oc.db
+}

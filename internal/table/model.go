@@ -4,6 +4,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/eduardofuncao/pam/internal/db"
 )
 
 const cellWidth = 15
@@ -17,25 +18,25 @@ type Model struct {
 	offsetY         int
 	visibleCols     int
 	visibleRows     int
-	columns         []string
-	data            [][]string
+	tableData       *db.TableData
 	elapsed         time.Duration
 	blinkCopiedCell bool
 	visualMode      bool
 	visualStartRow  int
 	visualStartCol  int
+	statusMessage   string
+	isError         bool
 }
 
 type blinkMsg struct{}
 
-func New(columns []string, data [][]string, elapsed time.Duration) Model {
+func New(tableData *db.TableData, elapsed time.Duration) Model {
 	return Model{
 		selectedRow: 0,
 		selectedCol: 0,
 		offsetX:     0,
 		offsetY:     0,
-		columns:     columns,
-		data:        data,
+		tableData:   tableData,
 		elapsed:     elapsed,
 		visualMode:  false,
 	}
@@ -46,9 +47,29 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) numRows() int {
-	return len(m.data)
+	if m.tableData == nil {
+		return 0
+	}
+	return len(m.tableData.Rows)
 }
 
 func (m Model) numCols() int {
-	return len(m.columns)
+	if m.tableData == nil {
+		return 0
+	}
+	return len(m.tableData.Columns)
+}
+
+func (m Model) getCell(row, col int) *db.Cell {
+	if m.tableData == nil || row < 0 || row >= len(m.tableData.Rows) {
+		return nil
+	}
+	if col < 0 || col >= len(m.tableData.Rows[row]) {
+		return nil
+	}
+	return &m.tableData.Rows[row][col]
+}
+
+func (m Model) getCurrentCell() *db.Cell {
+	return m.getCell(m.selectedRow, m.selectedCol)
 }

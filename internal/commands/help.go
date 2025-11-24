@@ -38,6 +38,8 @@ func PrintHelp() {
 	gohelp.Item("list queries", "List all saved queries for current connection")
 	gohelp.Item("list connections", "List all database connections")
 	gohelp.Item("list tables", "List all tables in current database")
+	gohelp.Item("explore [table]", "Quick table browser (shows tables or SELECT * LIMIT 1000)")
+	gohelp.Item("explore <table> --limit N", "Explore table with custom row limit")
 	gohelp.Item("ls", "Alias for list")
 	fmt.Println()
 
@@ -67,7 +69,8 @@ func PrintHelp() {
 	fmt.Println("  pam run users")
 	fmt.Println("  pam run users -e")
 	fmt.Println("  pam run 'SELECT * FROM users WHERE id = 5'")
-	fmt.Println("  pam run -e")
+	fmt.Println("  pam explore users")
+	fmt.Println("  pam explore users --limit 50")
 	fmt.Println()
 
 	gohelp.Separator()

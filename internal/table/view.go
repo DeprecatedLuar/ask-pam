@@ -22,7 +22,7 @@ func (m Model) View() string {
 		b.WriteString(m.renderDataRow(i))
 		b.WriteString("\n")
 	}
-	if len(m.data) < 1 {
+	if m.tableData == nil || len(m.tableData.Rows) < 1 {
 		b.WriteString("Nothing to show here...")
 	}
 
@@ -36,7 +36,7 @@ func (m Model) renderHeader() string {
 	endCol := min(m.offsetX+m.visibleCols, m.numCols())
 
 	for j := m.offsetX; j < endCol; j++ {
-		content := formatCell(m.columns[j])
+		content := formatCell(m.tableData.Columns[j])
 		cells = append(cells, headerStyle.Render(content))
 	}
 
@@ -48,7 +48,7 @@ func (m Model) renderDataRow(rowIndex int) string {
 	endCol := min(m.offsetX+m.visibleCols, m.numCols())
 
 	for j := m.offsetX; j < endCol; j++ {
-		content := formatCell(m.data[rowIndex][j])
+		content := formatCell(m.tableData.Rows[rowIndex][j].Value)
 		style := m.getCellStyle(rowIndex, j)
 		cells = append(cells, style.Render(content))
 	}
@@ -57,10 +57,43 @@ func (m Model) renderDataRow(rowIndex int) string {
 }
 
 func (m Model) renderFooter() string {
-	footer := fmt.Sprintf("\nIn %.2fs | Position: Row %d/%d, Col %d/%d | Scroll: H/L (left/right), K/J (up/down) | Copy: y/enter",
-		m.elapsed.Seconds(), m.selectedRow+1, m.numRows(), m.selectedCol+1, m.numCols())
-	// footer += fmt.Sprintf("\nSelected cell: %s", m.data[m.selectedRow][m.selectedCol])
-	return lipgloss.NewStyle().Faint(true).Render(footer)
+	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true)
+	normalStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
+	successStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("40")).Bold(true)
+	errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
+
+	edit := keyStyle.Render("e") + normalStyle.Render("dit")
+	yank := keyStyle.Render("y") + normalStyle.Render("ank")
+	quit := keyStyle.Render("q") + normalStyle.Render("uit")
+	nav := normalStyle.Render("hjkl: navigate")
+
+	cell := m.getCurrentCell()
+	colType := "?"
+	if cell != nil {
+		colType = cell.ColumnType
+	}
+
+	var footer string
+	if m.statusMessage != "" {
+		statusStyle := successStyle
+		if m.isError {
+			statusStyle = errorStyle
+		}
+		footer = fmt.Sprintf("\n%s | %s | %s  %s  %s  %s",
+			colType,
+			statusStyle.Render(m.statusMessage),
+			edit, yank, quit, nav,
+		)
+	} else {
+		footer = fmt.Sprintf("\n%s | %d/%d rows, %d/%d cols | %s  %s  %s  %s",
+			colType,
+			m.selectedRow+1, m.numRows(),
+			m.selectedCol+1, m.numCols(),
+			edit, yank, quit, nav,
+		)
+	}
+
+	return footer
 }
 
 func (m Model) getCellStyle(row, col int) lipgloss.Style {

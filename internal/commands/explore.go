@@ -41,26 +41,17 @@ func Explore(cfg *config.Config) {
 
 	currConn := config.FromConnectionYaml(cfg.Connections[cfg.CurrentConnection])
 
-	err := currConn.Open()
-	if err != nil {
+	if err := currConn.Open(); err != nil {
 		log.Fatalf("Could not open the connection to %s/%s: %s", currConn.GetDbType(), currConn.GetName(), err)
 	}
 
 	querySQL := fmt.Sprintf("SELECT * FROM %s LIMIT %d", tableName, limit)
 
-	queries := currConn.GetQueries()
-	if queries == nil {
-		queries = make(map[string]db.Query)
-	}
-	tempQueryName := "__explore_temp__"
-	queries[tempQueryName] = db.Query{Name: tempQueryName, SQL: querySQL}
-	currConn.SetQueries(queries)
-
 	start := time.Now()
 	done := make(chan struct{})
 	go spinner.Wait(done)
 
-	rows, err := currConn.Query(tempQueryName)
+	rows, err := currConn.QueryDirect(querySQL)
 	if err != nil {
 		done <- struct{}{}
 		log.Fatalf("Could not query table '%s': %v", tableName, err)
@@ -72,16 +63,16 @@ func Explore(cfg *config.Config) {
 		log.Fatal("Query did not return *sql.Rows")
 	}
 
-	columns, data, err := db.FormatTableData(sqlRows)
+	tableData, err := db.BuildTableData(sqlRows, querySQL, currConn)
 	if err != nil {
 		done <- struct{}{}
-		log.Fatalf("Error formatting data: %v", err)
+		log.Fatalf("Error building table data: %v", err)
 	}
 
 	done <- struct{}{}
 	elapsed := time.Since(start)
 
-	if err := table.Render(columns, data, elapsed); err != nil {
+	if err := table.Render(tableData, elapsed); err != nil {
 		log.Fatalf("Error rendering table: %v", err)
 	}
 }

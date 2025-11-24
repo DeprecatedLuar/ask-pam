@@ -1,5 +1,7 @@
 package db
 
+import "database/sql"
+
 type DatabaseConnection interface {
 	Open() error
 	Ping() error
@@ -11,6 +13,7 @@ type DatabaseConnection interface {
 	GetDbType() string
 	GetConnString() string
 	GetQueries() map[string]Query
+	GetDB() *sql.DB
 
 	SetQueries(map[string]Query)
 }
