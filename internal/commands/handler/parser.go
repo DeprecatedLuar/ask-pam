@@ -28,7 +28,7 @@ func Parse(cfg *config.Config) {
 		commands.Remove(cfg)
 	case "query", "run":
 		commands.Query(cfg)
-	case "list":
+	case "list", "ls":
 		commands.List(cfg)
 	case "edit":
 		commands.Edit(cfg)
@@ -36,6 +36,8 @@ func Parse(cfg *config.Config) {
 		commands.Status(cfg)
 	case "history":
 		commands.History(cfg)
+	case "explore":
+		commands.Explore(cfg)
 	default:
 		log.Fatalf("Unknown command: %s", command)
 	}
