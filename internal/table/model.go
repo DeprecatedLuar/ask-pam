@@ -1,10 +1,12 @@
 package table
 
 import (
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/eduardofuncao/pam/internal/db"
+	"github.com/mattn/go-runewidth"
 )
 
 const (
@@ -23,6 +25,7 @@ type Model struct {
 	offsetY         int
 	visibleCols     int
 	visibleRows     int
+	columnWidths    []int
 	tableData       *db.TableData
 	elapsed         time.Duration
 	blinkCopiedCell bool
@@ -37,13 +40,14 @@ type blinkMsg struct{}
 
 func New(tableData *db.TableData, elapsed time.Duration) Model {
 	return Model{
-		selectedRow: 0,
-		selectedCol: 0,
-		offsetX:     0,
-		offsetY:     0,
-		tableData:   tableData,
-		elapsed:     elapsed,
-		visualMode:  false,
+		selectedRow:  0,
+		selectedCol:  0,
+		offsetX:      0,
+		offsetY:      0,
+		tableData:    tableData,
+		elapsed:      elapsed,
+		visualMode:   false,
+		columnWidths: calculateColumnWidths(tableData),
 	}
 }
 
@@ -77,4 +81,64 @@ func (m Model) getCell(row, col int) *db.Cell {
 
 func (m Model) getCurrentCell() *db.Cell {
 	return m.getCell(m.selectedRow, m.selectedCol)
+}
+
+func getTypeMaxWidth(colType string) int {
+	colTypeLower := strings.ToLower(colType)
+
+	switch {
+	case strings.Contains(colTypeLower, "bool"):
+		return 5
+	case strings.Contains(colTypeLower, "int"), strings.Contains(colTypeLower, "serial"):
+		return 12
+	case strings.Contains(colTypeLower, "uuid"):
+		return 10
+	case strings.Contains(colTypeLower, "json"):
+		return 12
+	case strings.Contains(colTypeLower, "date"), strings.Contains(colTypeLower, "time"):
+		return 10
+	default:
+		return 20
+	}
+}
+
+func calculateColumnWidths(tableData *db.TableData) []int {
+	if tableData == nil || len(tableData.Columns) == 0 {
+		return []int{}
+	}
+
+	widths := make([]int, len(tableData.Columns))
+
+	for colIdx, colName := range tableData.Columns {
+		headerWidth := runewidth.StringWidth(colName)
+
+		var colType string
+		if len(tableData.Rows) > 0 && colIdx < len(tableData.Rows[0]) {
+			colType = tableData.Rows[0][colIdx].ColumnType
+		}
+
+		typeMax := getTypeMaxWidth(colType)
+
+		maxContentWidth := headerWidth
+		for _, row := range tableData.Rows {
+			if colIdx < len(row) {
+				contentWidth := runewidth.StringWidth(row[colIdx].Value)
+				if contentWidth > maxContentWidth {
+					maxContentWidth = contentWidth
+				}
+			}
+		}
+
+		if maxContentWidth > typeMax {
+			widths[colIdx] = typeMax
+		} else {
+			widths[colIdx] = maxContentWidth
+		}
+
+		if widths[colIdx] < headerWidth {
+			widths[colIdx] = headerWidth
+		}
+	}
+
+	return widths
 }

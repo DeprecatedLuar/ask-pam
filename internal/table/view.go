@@ -8,9 +8,16 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
+const (
+	msgLoading         = "Loading..."
+	msgNoData          = "Nothing to show here..."
+	borderSeparator    = "│"
+	truncationEllipsis = "…"
+)
+
 func (m Model) View() string {
 	if m.width == 0 {
-		return "Loading..."
+		return msgLoading
 	}
 
 	var b strings.Builder
@@ -24,7 +31,7 @@ func (m Model) View() string {
 		b.WriteString("\n")
 	}
 	if m.tableData == nil || len(m.tableData.Rows) < 1 {
-		b.WriteString("Nothing to show here...")
+		b.WriteString(msgNoData)
 	}
 
 	b.WriteString(m.renderFooter())
@@ -37,11 +44,15 @@ func (m Model) renderHeader() string {
 	endCol := min(m.offsetX+m.visibleCols, m.numCols())
 
 	for j := m.offsetX; j < endCol; j++ {
-		content := formatCell(m.tableData.Columns[j])
+		width := cellWidth
+		if j < len(m.columnWidths) {
+			width = m.columnWidths[j]
+		}
+		content := formatCell(m.tableData.Columns[j], width)
 		cells = append(cells, headerStyle.Render(content))
 	}
 
-	return strings.Join(cells, borderStyle.Render("│"))
+	return strings.Join(cells, borderStyle.Render(borderSeparator))
 }
 
 func (m Model) renderDataRow(rowIndex int) string {
@@ -49,19 +60,23 @@ func (m Model) renderDataRow(rowIndex int) string {
 	endCol := min(m.offsetX+m.visibleCols, m.numCols())
 
 	for j := m.offsetX; j < endCol; j++ {
-		content := formatCell(m.tableData.Rows[rowIndex][j].Value)
+		width := cellWidth
+		if j < len(m.columnWidths) {
+			width = m.columnWidths[j]
+		}
+		content := formatCell(m.tableData.Rows[rowIndex][j].Value, width)
 		style := m.getCellStyle(rowIndex, j)
 		cells = append(cells, style.Render(content))
 	}
 
-	return strings.Join(cells, borderStyle.Render("│"))
+	return strings.Join(cells, borderStyle.Render(borderSeparator))
 }
 
 func (m Model) renderFooter() string {
-	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true)
-	normalStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
-	successStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("40")).Bold(true)
-	errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
+	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(colorKeyHighlight)).Bold(true)
+	normalStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(colorNormal))
+	successStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(colorSuccess)).Bold(true)
+	errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(colorError)).Bold(true)
 
 	edit := keyStyle.Render("e") + normalStyle.Render("dit")
 	yank := keyStyle.Render("y") + normalStyle.Render("ank")
@@ -104,14 +119,27 @@ func (m Model) getCellStyle(row, col int) lipgloss.Style {
 		}
 		return selectedStyle
 	}
+
+	cell := m.getCell(row, col)
+	if cell != nil && cell.Value == "NULL" {
+		return nullStyle
+	}
+
 	return cellStyle
 }
 
-func formatCell(content string) string {
-	width := runewidth.StringWidth(content)
-	if width > cellWidth {
-		return runewidth.Truncate(content, cellWidth, "…")
+func formatCell(content string, cellWidth int) string {
+	if cellWidth < 2 {
+		return strings.Repeat(" ", cellWidth)
 	}
-	padding := cellWidth - width
-	return content + strings.Repeat(" ", padding)
+
+	effectiveWidth := cellWidth - 1
+	width := runewidth.StringWidth(content)
+
+	if width > effectiveWidth {
+		return runewidth.Truncate(content, effectiveWidth, truncationEllipsis) + " "
+	}
+
+	padding := effectiveWidth - width
+	return content + strings.Repeat(" ", padding) + " "
 }

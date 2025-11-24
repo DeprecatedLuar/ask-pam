@@ -11,6 +11,15 @@ import (
 	"github.com/eduardofuncao/pam/internal/db"
 )
 
+const (
+	defaultEditor      = "vi"
+	tempFilePattern    = "pam-cell-*.txt"
+	msgUpdateSuccess   = "Updated successfully"
+	msgUpdateFailedFmt = "Update failed: %v"
+	dbTypePostgres     = "postgres"
+	dbTypeOracle       = "oracle"
+)
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -73,9 +82,31 @@ func (m Model) handleWindowResize(msg tea.WindowSizeMsg) Model {
 	m.width = msg.Width
 	m.height = msg.Height
 
-	m.visibleCols = (m.width - horizontalPadding) / (cellWidth + columnSeparator)
-	if m.visibleCols > m.numCols() {
-		m.visibleCols = m.numCols()
+	availableWidth := m.width - horizontalPadding
+	m.visibleCols = 0
+	widthUsed := 0
+
+	for i := m.offsetX; i < m.numCols(); i++ {
+		colWidth := cellWidth
+		if i < len(m.columnWidths) {
+			colWidth = m.columnWidths[i]
+		}
+
+		needWidth := colWidth
+		if m.visibleCols > 0 {
+			needWidth += columnSeparator
+		}
+
+		if widthUsed+needWidth > availableWidth {
+			break
+		}
+
+		widthUsed += needWidth
+		m.visibleCols++
+	}
+
+	if m.visibleCols == 0 && m.numCols() > 0 {
+		m.visibleCols = 1
 	}
 
 	m.visibleRows = m.height - verticalReserved
@@ -104,7 +135,7 @@ func (m Model) editCell() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	tmpfile, err := os.CreateTemp("", "pam-cell-*.txt")
+	tmpfile, err := os.CreateTemp("", tempFilePattern)
 	if err != nil {
 		log.Printf("Error creating temp file: %v", err)
 		return m, nil
@@ -127,7 +158,7 @@ func (m Model) editCell() (tea.Model, tea.Cmd) {
 
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
-		editor = "vi"
+		editor = defaultEditor
 	}
 
 	cmd := exec.Command(editor, tmpfilePath)
@@ -163,12 +194,11 @@ func (m Model) editCell() (tea.Model, tea.Cmd) {
 
 	_, err = m.tableData.Connection.GetDB().Exec(updateSQL, args...)
 	if err != nil {
-		m.statusMessage = fmt.Sprintf("Update failed: %v", err)
+		m.statusMessage = fmt.Sprintf(msgUpdateFailedFmt, err)
 		m.isError = true
 		return m, nil
 	}
 
-	// Update the cell with new value
 	if newValueStr == "" {
 		m.tableData.Rows[cell.RowIndex][cell.ColumnIndex].Value = "NULL"
 		m.tableData.Rows[cell.RowIndex][cell.ColumnIndex].RawValue = nil
@@ -177,7 +207,7 @@ func (m Model) editCell() (tea.Model, tea.Cmd) {
 		m.tableData.Rows[cell.RowIndex][cell.ColumnIndex].RawValue = newValueStr
 	}
 
-	m.statusMessage = "Updated successfully"
+	m.statusMessage = msgUpdateSuccess
 	m.isError = false
 
 	return m, nil
@@ -225,11 +255,11 @@ func (m Model) buildUpdateQuery(cell *db.Cell, newValue string) (string, []any) 
 
 func (m Model) placeholder(dbType string, index int) string {
 	switch dbType {
-	case "postgres":
+	case dbTypePostgres:
 		return fmt.Sprintf("$%d", index)
-	case "oracle":
+	case dbTypeOracle:
 		return fmt.Sprintf(":%d", index)
-	default: // mysql, sqlite3
+	default:
 		return "?"
 	}
 }

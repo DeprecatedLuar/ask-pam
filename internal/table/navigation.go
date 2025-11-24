@@ -8,6 +8,10 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+const (
+	blinkDuration = 200 * time.Millisecond
+)
+
 func (m Model) moveUp() Model {
 	if m.selectedRow > 0 {
 		m.selectedRow--
@@ -168,9 +172,9 @@ func (m Model) copySelection() (Model, tea.Cmd) {
 	
 	m.visualMode = false
 	m.blinkCopiedCell = true
-	
+
 	return m, func() tea.Msg {
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(blinkDuration)
 		return blinkMsg{}
 	}
 }
