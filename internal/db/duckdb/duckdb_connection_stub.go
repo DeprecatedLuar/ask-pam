@@ -1,17 +1,25 @@
 //go:build !cgo
 
-package db
+package duckdb
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/eduardofuncao/squix/internal/db"
+)
 
 type DuckDBConnection struct {
-	*BaseConnection
+	*db.BaseConnection
 }
 
-func NewDuckDBConnection(name, connStr string) (*DuckDBConnection, error) {
+func New(name, connStr string) (db.DatabaseConnection, error) {
 	return nil, fmt.Errorf("duckdb driver not available: build with CGO_ENABLED=1 to enable")
 }
 
 func (d *DuckDBConnection) GetUniqueConstraints(tableName string) ([]string, error) {
 	return nil, fmt.Errorf("duckdb driver not available")
+}
+
+func init() {
+	db.Register("duckdb", New)
 }

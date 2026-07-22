@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/eduardofuncao/squix/internal/config"
+	_ "github.com/eduardofuncao/squix/internal/db/engines"
 	"github.com/eduardofuncao/squix/internal/styles"
 )
 

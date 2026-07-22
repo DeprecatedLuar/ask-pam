@@ -1,25 +1,26 @@
-package db
+package firebird
 
 import (
 	"database/sql"
 	"fmt"
+	"github.com/eduardofuncao/squix/internal/db"
 	"strings"
 
 	_ "github.com/nakagami/firebirdsql"
 )
 
 type FirebirdConnection struct {
-	*BaseConnection
+	*db.BaseConnection
 	db *sql.DB
 }
 
-func NewFirebirdConnection(name, connStr string) (*FirebirdConnection, error) {
+func New(name, connStr string) (db.DatabaseConnection, error) {
 	return &FirebirdConnection{
-		BaseConnection: &BaseConnection{
+		BaseConnection: &db.BaseConnection{
 			Name:       name,
 			DbType:     "firebird",
 			ConnString: connStr,
-			Queries:    make(map[string]Query),
+			Queries:    make(map[string]db.Query),
 		},
 	}, nil
 }
@@ -195,7 +196,7 @@ func (f *FirebirdConnection) GetViews() ([]string, error) {
 	return views, nil
 }
 
-func (f *FirebirdConnection) GetForeignKeys(tableName string) ([]ForeignKey, error) {
+func (f *FirebirdConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if f.db == nil {
 		return nil, fmt.Errorf("database not initialized")
 	}
@@ -224,9 +225,9 @@ func (f *FirebirdConnection) GetForeignKeys(tableName string) ([]ForeignKey, err
 	}
 	defer rows.Close()
 
-	var foreignKeys []ForeignKey
+	var foreignKeys []db.ForeignKey
 	for rows.Next() {
-		var fk ForeignKey
+		var fk db.ForeignKey
 		if err := rows.Scan(&fk.Column, &fk.ReferencedTable, &fk.ReferencedColumn); err == nil {
 			foreignKeys = append(foreignKeys, fk)
 		}
@@ -235,7 +236,7 @@ func (f *FirebirdConnection) GetForeignKeys(tableName string) ([]ForeignKey, err
 	return foreignKeys, nil
 }
 
-func (f *FirebirdConnection) GetForeignKeysReferencingTable(tableName string) ([]ForeignKey, error) {
+func (f *FirebirdConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if f.db == nil {
 		return nil, fmt.Errorf("database not initialized")
 	}
@@ -264,9 +265,9 @@ func (f *FirebirdConnection) GetForeignKeysReferencingTable(tableName string) ([
 	}
 	defer rows.Close()
 
-	var foreignKeys []ForeignKey
+	var foreignKeys []db.ForeignKey
 	for rows.Next() {
-		var fk ForeignKey
+		var fk db.ForeignKey
 		// In this reverse query, the FK is in another table pointing to this table
 		if err := rows.Scan(&fk.Column, &fk.ReferencedTable, &fk.ReferencedColumn); err == nil {
 			foreignKeys = append(foreignKeys, fk)
@@ -276,8 +277,8 @@ func (f *FirebirdConnection) GetForeignKeysReferencingTable(tableName string) ([
 	return foreignKeys, nil
 }
 
-func (f *FirebirdConnection) GetTableMetadata(tableName string) (*TableMetadata, error) {
-	metadata := &TableMetadata{
+func (f *FirebirdConnection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
+	metadata := &db.TableMetadata{
 		TableName: tableName,
 	}
 
@@ -397,4 +398,9 @@ func (f *FirebirdConnection) ApplyRowLimit(sqlStr string, limit int) string {
 	after := sqlStr[selectPos+6:]
 
 	return fmt.Sprintf("%s FIRST %d %s", before, limit, after)
+}
+
+func init() {
+	db.Register("firebird", New)
+	db.Register("interbase", New)
 }

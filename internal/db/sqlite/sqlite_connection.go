@@ -1,20 +1,21 @@
-package db
+package sqlite
 
 import (
 	"database/sql"
 	"fmt"
+	"github.com/eduardofuncao/squix/internal/db"
 	"strings"
 
 	_ "modernc.org/sqlite"
 )
 
 type SQLiteConnection struct {
-	*BaseConnection
+	*db.BaseConnection
 	db *sql.DB
 }
 
-func NewSQLiteConnection(name, connStr string) (*SQLiteConnection, error) {
-	bc := &BaseConnection{
+func New(name, connStr string) (db.DatabaseConnection, error) {
+	bc := &db.BaseConnection{
 		Name:       name,
 		DbType:     "sqlite",
 		ConnString: connStr,
@@ -67,7 +68,7 @@ func (s *SQLiteConnection) Exec(sql string, args ...any) error {
 
 func (s *SQLiteConnection) GetTableMetadata(
 	tableName string,
-) (*TableMetadata, error) {
+) (*db.TableMetadata, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -80,7 +81,7 @@ func (s *SQLiteConnection) GetTableMetadata(
 	}
 	defer rows.Close()
 
-	metadata := &TableMetadata{
+	metadata := &db.TableMetadata{
 		TableName: tableName,
 	}
 
@@ -195,7 +196,7 @@ func (s *SQLiteConnection) GetViews() ([]string, error) {
 	return views, nil
 }
 
-func (s *SQLiteConnection) GetForeignKeys(tableName string) ([]ForeignKey, error) {
+func (s *SQLiteConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -208,14 +209,14 @@ func (s *SQLiteConnection) GetForeignKeys(tableName string) ([]ForeignKey, error
 	}
 	defer rows.Close()
 
-	var foreignKeys []ForeignKey
+	var foreignKeys []db.ForeignKey
 	for rows.Next() {
 		var id, seq int
 		var table, from, to string
 		var onUpdate, onDelete, match string
 
 		if err := rows.Scan(&id, &seq, &table, &from, &to, &onUpdate, &onDelete, &match); err == nil {
-			foreignKeys = append(foreignKeys, ForeignKey{
+			foreignKeys = append(foreignKeys, db.ForeignKey{
 				Column:           from,
 				ReferencedTable:  table,
 				ReferencedColumn: to,
@@ -226,7 +227,7 @@ func (s *SQLiteConnection) GetForeignKeys(tableName string) ([]ForeignKey, error
 	return foreignKeys, nil
 }
 
-func (s *SQLiteConnection) GetForeignKeysReferencingTable(tableName string) ([]ForeignKey, error) {
+func (s *SQLiteConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -255,7 +256,7 @@ func (s *SQLiteConnection) GetForeignKeysReferencingTable(tableName string) ([]F
 	}
 
 	// Check each table for FKs referencing the target table
-	var foreignKeys []ForeignKey
+	var foreignKeys []db.ForeignKey
 	for _, tbl := range allTables {
 		query := fmt.Sprintf("PRAGMA foreign_key_list(%s)", tbl)
 		rows, err := s.db.Query(query)
@@ -271,7 +272,7 @@ func (s *SQLiteConnection) GetForeignKeysReferencingTable(tableName string) ([]F
 			if err := rows.Scan(&id, &seq, &table, &from, &to, &onUpdate, &onDelete, &match); err == nil {
 				// Check if this FK references our target table
 				if strings.EqualFold(table, tableName) {
-					foreignKeys = append(foreignKeys, ForeignKey{
+					foreignKeys = append(foreignKeys, db.ForeignKey{
 						Column:           from,
 						ReferencedTable:  tbl,
 						ReferencedColumn: to,
@@ -373,4 +374,9 @@ func (s *SQLiteConnection) BuildDeleteStatement(
 
 func (s *SQLiteConnection) GetPlaceholder(paramIndex int) string {
 	return "?"
+}
+
+func init() {
+	db.Register("sqlite", New)
+	db.Register("sqlite3", New)
 }

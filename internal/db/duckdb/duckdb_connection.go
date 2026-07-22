@@ -1,22 +1,23 @@
 //go:build cgo
 
-package db
+package duckdb
 
 import (
 	"database/sql"
 	"fmt"
+	"github.com/eduardofuncao/squix/internal/db"
 	"strings"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
 type DuckDBConnection struct {
-	*BaseConnection
+	*db.BaseConnection
 	db *sql.DB
 }
 
-func NewDuckDBConnection(name, connStr string) (*DuckDBConnection, error) {
-	bc := &BaseConnection{
+func New(name, connStr string) (db.DatabaseConnection, error) {
+	bc := &db.BaseConnection{
 		Name:       name,
 		DbType:     "duckdb",
 		ConnString: connStr,
@@ -64,12 +65,12 @@ func (d *DuckDBConnection) Exec(sql string, args ...any) error {
 	return err
 }
 
-func (d *DuckDBConnection) GetTableMetadata(tableName string) (*TableMetadata, error) {
+func (d *DuckDBConnection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
 	if d.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
 
-	metadata := &TableMetadata{
+	metadata := &db.TableMetadata{
 		TableName: tableName,
 	}
 
@@ -201,7 +202,7 @@ func (d *DuckDBConnection) GetViews() ([]string, error) {
 	return views, nil
 }
 
-func (d *DuckDBConnection) GetForeignKeys(tableName string) ([]ForeignKey, error) {
+func (d *DuckDBConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if d.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -221,14 +222,14 @@ func (d *DuckDBConnection) GetForeignKeys(tableName string) ([]ForeignKey, error
 	}
 	defer rows.Close()
 
-	var foreignKeys []ForeignKey
+	var foreignKeys []db.ForeignKey
 	for rows.Next() {
 		var cols, refTable, refCols string
 		if err := rows.Scan(&cols, &refTable, &refCols); err == nil {
 			srcCols := parseDuckDBArray(cols)
 			dstCols := parseDuckDBArray(refCols)
 			for i := range srcCols {
-				fk := ForeignKey{
+				fk := db.ForeignKey{
 					Column:          srcCols[i],
 					ReferencedTable: refTable,
 				}
@@ -243,7 +244,7 @@ func (d *DuckDBConnection) GetForeignKeys(tableName string) ([]ForeignKey, error
 	return foreignKeys, nil
 }
 
-func (d *DuckDBConnection) GetForeignKeysReferencingTable(tableName string) ([]ForeignKey, error) {
+func (d *DuckDBConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if d.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -263,14 +264,14 @@ func (d *DuckDBConnection) GetForeignKeysReferencingTable(tableName string) ([]F
 	}
 	defer rows.Close()
 
-	var foreignKeys []ForeignKey
+	var foreignKeys []db.ForeignKey
 	for rows.Next() {
 		var srcTable, srcCols, refCols string
 		if err := rows.Scan(&srcTable, &srcCols, &refCols); err == nil {
 			sCols := parseDuckDBArray(srcCols)
 			dCols := parseDuckDBArray(refCols)
 			for i := range sCols {
-				fk := ForeignKey{
+				fk := db.ForeignKey{
 					Column:          sCols[i],
 					ReferencedTable: srcTable,
 				}
@@ -329,4 +330,8 @@ func parseDuckDBArray(s string) []string {
 		}
 	}
 	return result
+}
+
+func init() {
+	db.Register("duckdb", New)
 }

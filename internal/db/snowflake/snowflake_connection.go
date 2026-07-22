@@ -1,10 +1,11 @@
-package db
+package snowflake
 
 import (
 	"crypto/rsa"
 	"database/sql"
 	"encoding/pem"
 	"fmt"
+	"github.com/eduardofuncao/squix/internal/db"
 	"net/url"
 	"os"
 	"strings"
@@ -14,14 +15,14 @@ import (
 )
 
 type SnowflakeConnection struct {
-	*BaseConnection
+	*db.BaseConnection
 	db        *sql.DB
 	warehouse string
 	role      string
 }
 
-func NewSnowflakeConnection(name, connStr string) (*SnowflakeConnection, error) {
-	bc := &BaseConnection{
+func New(name, connStr string) (db.DatabaseConnection, error) {
+	bc := &db.BaseConnection{
 		Name:       name,
 		DbType:     "snowflake",
 		ConnString: connStr,
@@ -210,12 +211,12 @@ func scanShowColumns(rows *sql.Rows, wantCols []string) ([][]string, error) {
 	return result, nil
 }
 
-func (s *SnowflakeConnection) GetTableMetadata(tableName string) (*TableMetadata, error) {
+func (s *SnowflakeConnection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
 
-	metadata := &TableMetadata{
+	metadata := &db.TableMetadata{
 		TableName: tableName,
 	}
 
@@ -257,48 +258,48 @@ func (s *SnowflakeConnection) GetTableMetadata(tableName string) (*TableMetadata
 	if fks, err := s.GetForeignKeys(tableName); err == nil {
 		metadata.ForeignKeys = fks
 	} else {
-		metadata.ForeignKeys = []ForeignKey{}
+		metadata.ForeignKeys = []db.ForeignKey{}
 	}
 
 	return metadata, nil
 }
 
-func (s *SnowflakeConnection) GetForeignKeys(tableName string) ([]ForeignKey, error) {
+func (s *SnowflakeConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if s.db == nil {
-		return []ForeignKey{}, nil
+		return []db.ForeignKey{}, nil
 	}
 	rows, err := s.db.Query(fmt.Sprintf("SHOW IMPORTED KEYS IN TABLE %s", strings.ToUpper(tableName)))
 	if err != nil {
-		return []ForeignKey{}, nil
+		return []db.ForeignKey{}, nil
 	}
 	defer rows.Close()
 	vals, err := scanShowColumns(rows, []string{"fk_column_name", "pk_table_name", "pk_column_name"})
 	if err != nil {
-		return []ForeignKey{}, nil
+		return []db.ForeignKey{}, nil
 	}
-	fks := make([]ForeignKey, 0, len(vals))
+	fks := make([]db.ForeignKey, 0, len(vals))
 	for _, row := range vals {
-		fks = append(fks, ForeignKey{Column: row[0], ReferencedTable: row[1], ReferencedColumn: row[2]})
+		fks = append(fks, db.ForeignKey{Column: row[0], ReferencedTable: row[1], ReferencedColumn: row[2]})
 	}
 	return fks, nil
 }
 
-func (s *SnowflakeConnection) GetForeignKeysReferencingTable(tableName string) ([]ForeignKey, error) {
+func (s *SnowflakeConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if s.db == nil {
-		return []ForeignKey{}, nil
+		return []db.ForeignKey{}, nil
 	}
 	rows, err := s.db.Query(fmt.Sprintf("SHOW EXPORTED KEYS IN TABLE %s", strings.ToUpper(tableName)))
 	if err != nil {
-		return []ForeignKey{}, nil
+		return []db.ForeignKey{}, nil
 	}
 	defer rows.Close()
 	vals, err := scanShowColumns(rows, []string{"fk_column_name", "pk_table_name", "pk_column_name"})
 	if err != nil {
-		return []ForeignKey{}, nil
+		return []db.ForeignKey{}, nil
 	}
-	fks := make([]ForeignKey, 0, len(vals))
+	fks := make([]db.ForeignKey, 0, len(vals))
 	for _, row := range vals {
-		fks = append(fks, ForeignKey{Column: row[0], ReferencedTable: row[1], ReferencedColumn: row[2]})
+		fks = append(fks, db.ForeignKey{Column: row[0], ReferencedTable: row[1], ReferencedColumn: row[2]})
 	}
 	return fks, nil
 }
@@ -442,4 +443,8 @@ func (s *SnowflakeConnection) ApplyRowLimit(sql string, limit int) string {
 
 	trimmed := strings.TrimSpace(strings.TrimRight(strings.TrimSpace(sql), ";"))
 	return fmt.Sprintf("%s\nLIMIT %d", trimmed, limit)
+}
+
+func init() {
+	db.Register("snowflake", New)
 }

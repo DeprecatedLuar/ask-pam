@@ -1,20 +1,21 @@
-package db
+package postgres
 
 import (
 	"database/sql"
 	"fmt"
+	"github.com/eduardofuncao/squix/internal/db"
 	"strings"
 
 	_ "github.com/lib/pq"
 )
 
 type PostgresConnection struct {
-	*BaseConnection
+	*db.BaseConnection
 	db *sql.DB
 }
 
-func NewPostgresConnection(name, connStr string) (*PostgresConnection, error) {
-	bc := &BaseConnection{
+func New(name, connStr string) (db.DatabaseConnection, error) {
+	bc := &db.BaseConnection{
 		Name:       name,
 		DbType:     "postgres",
 		ConnString: connStr,
@@ -77,7 +78,7 @@ func (p *PostgresConnection) Exec(sql string, args ...any) error {
 
 func (p *PostgresConnection) GetTableMetadata(
 	tableName string,
-) (*TableMetadata, error) {
+) (*db.TableMetadata, error) {
 	if p.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -112,7 +113,7 @@ func (p *PostgresConnection) GetTableMetadata(
 	}
 	defer rows.Close()
 
-	metadata := &TableMetadata{
+	metadata := &db.TableMetadata{
 		TableName: tableName,
 	}
 
@@ -273,7 +274,7 @@ func (p *PostgresConnection) GetViews() ([]string, error) {
 	return views, nil
 }
 
-func (p *PostgresConnection) GetForeignKeys(tableName string) ([]ForeignKey, error) {
+func (p *PostgresConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if p.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -313,9 +314,9 @@ func (p *PostgresConnection) GetForeignKeys(tableName string) ([]ForeignKey, err
 	}
 	defer rows.Close()
 
-	var foreignKeys []ForeignKey
+	var foreignKeys []db.ForeignKey
 	for rows.Next() {
-		var fk ForeignKey
+		var fk db.ForeignKey
 		if err := rows.Scan(&fk.Column, &fk.ReferencedTable, &fk.ReferencedColumn); err == nil {
 			foreignKeys = append(foreignKeys, fk)
 		}
@@ -324,7 +325,7 @@ func (p *PostgresConnection) GetForeignKeys(tableName string) ([]ForeignKey, err
 	return foreignKeys, nil
 }
 
-func (p *PostgresConnection) GetForeignKeysReferencingTable(tableName string) ([]ForeignKey, error) {
+func (p *PostgresConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if p.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -365,9 +366,9 @@ func (p *PostgresConnection) GetForeignKeysReferencingTable(tableName string) ([
 	}
 	defer rows.Close()
 
-	var foreignKeys []ForeignKey
+	var foreignKeys []db.ForeignKey
 	for rows.Next() {
-		var fk ForeignKey
+		var fk db.ForeignKey
 		// Note: We swap the meaning here
 		// fk.Column = the FK column in the other table
 		// fk.ReferencedTable = the other table (that has the FK)
@@ -465,4 +466,9 @@ func (c *PostgresConnection) BuildDeleteStatement(
 
 func (p *PostgresConnection) GetPlaceholder(paramIndex int) string {
 	return fmt.Sprintf("$%d", paramIndex)
+}
+
+func init() {
+	db.Register("postgres", New)
+	db.Register("postgresql", New)
 }

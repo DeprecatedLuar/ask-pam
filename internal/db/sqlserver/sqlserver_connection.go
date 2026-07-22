@@ -1,20 +1,21 @@
-package db
+package sqlserver
 
 import (
 	"database/sql"
 	"fmt"
+	"github.com/eduardofuncao/squix/internal/db"
 	"strings"
 
 	_ "github.com/microsoft/go-mssqldb"
 )
 
 type SQLServerConnection struct {
-	*BaseConnection
+	*db.BaseConnection
 	db *sql.DB
 }
 
-func NewSQLServerConnection(name, connStr string) (*SQLServerConnection, error) {
-	bc := &BaseConnection{
+func New(name, connStr string) (db.DatabaseConnection, error) {
+	bc := &db.BaseConnection{
 		Name:       name,
 		DbType:     "sqlserver",
 		ConnString: connStr,
@@ -63,7 +64,7 @@ func (s *SQLServerConnection) Exec(sql string, args ...any) error {
 	return err
 }
 
-func (s *SQLServerConnection) GetTableMetadata(tableName string) (*TableMetadata, error) {
+func (s *SQLServerConnection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -99,7 +100,7 @@ func (s *SQLServerConnection) GetTableMetadata(tableName string) (*TableMetadata
 	}
 	defer rows.Close()
 
-	metadata := &TableMetadata{
+	metadata := &db.TableMetadata{
 		TableName: tableName,
 	}
 
@@ -149,7 +150,7 @@ func (s *SQLServerConnection) GetTableMetadata(tableName string) (*TableMetadata
 	return metadata, nil
 }
 
-func (s *SQLServerConnection) GetForeignKeys(tableName string) ([]ForeignKey, error) {
+func (s *SQLServerConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -187,9 +188,9 @@ func (s *SQLServerConnection) GetForeignKeys(tableName string) ([]ForeignKey, er
 	}
 	defer rows.Close()
 
-	var foreignKeys []ForeignKey
+	var foreignKeys []db.ForeignKey
 	for rows.Next() {
-		var fk ForeignKey
+		var fk db.ForeignKey
 		if err := rows.Scan(&fk.Column, &fk.ReferencedTable, &fk.ReferencedColumn); err == nil {
 			foreignKeys = append(foreignKeys, fk)
 		}
@@ -198,7 +199,7 @@ func (s *SQLServerConnection) GetForeignKeys(tableName string) ([]ForeignKey, er
 	return foreignKeys, nil
 }
 
-func (s *SQLServerConnection) GetForeignKeysReferencingTable(tableName string) ([]ForeignKey, error) {
+func (s *SQLServerConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -236,9 +237,9 @@ func (s *SQLServerConnection) GetForeignKeysReferencingTable(tableName string) (
 	}
 	defer rows.Close()
 
-	var foreignKeys []ForeignKey
+	var foreignKeys []db.ForeignKey
 	for rows.Next() {
-		var fk ForeignKey
+		var fk db.ForeignKey
 		if err := rows.Scan(&fk.Column, &fk.ReferencedTable, &fk.ReferencedColumn); err == nil {
 			foreignKeys = append(foreignKeys, fk)
 		}
@@ -458,4 +459,9 @@ func (s *SQLServerConnection) ApplyRowLimit(sql string, limit int) string {
 	return fmt.Sprintf("%s\nOFFSET 0 ROWS FETCH NEXT %d ROWS ONLY",
 		strings.TrimRight(sql, ";"),
 		limit)
+}
+
+func init() {
+	db.Register("sqlserver", New)
+	db.Register("mssql", New)
 }

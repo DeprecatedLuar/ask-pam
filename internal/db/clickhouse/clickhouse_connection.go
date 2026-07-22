@@ -1,8 +1,9 @@
-package db
+package clickhouse
 
 import (
 	"database/sql"
 	"fmt"
+	"github.com/eduardofuncao/squix/internal/db"
 	"net/url"
 	"strings"
 
@@ -10,12 +11,12 @@ import (
 )
 
 type ClickHouseConnection struct {
-	*BaseConnection
+	*db.BaseConnection
 	db *sql.DB
 }
 
-func NewClickHouseConnection(name, connStr string) (*ClickHouseConnection, error) {
-	bc := &BaseConnection{
+func New(name, connStr string) (db.DatabaseConnection, error) {
+	bc := &db.BaseConnection{
 		Name:       name,
 		DbType:     "clickhouse",
 		ConnString: connStr,
@@ -85,12 +86,12 @@ func (c *ClickHouseConnection) Exec(sql string, args ...any) error {
 	return err
 }
 
-func (c *ClickHouseConnection) GetTableMetadata(tableName string) (*TableMetadata, error) {
+func (c *ClickHouseConnection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
 	if c.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
 
-	metadata := &TableMetadata{
+	metadata := &db.TableMetadata{
 		TableName: tableName,
 	}
 
@@ -140,19 +141,19 @@ func (c *ClickHouseConnection) GetTableMetadata(tableName string) (*TableMetadat
 		metadata.ColumnTypes = append(metadata.ColumnTypes, colType)
 	}
 
-	metadata.ForeignKeys = []ForeignKey{}
+	metadata.ForeignKeys = []db.ForeignKey{}
 
 	return metadata, nil
 }
 
-func (c *ClickHouseConnection) GetForeignKeys(tableName string) ([]ForeignKey, error) {
+func (c *ClickHouseConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	// Return empty list gracefully
-	return []ForeignKey{}, nil
+	return []db.ForeignKey{}, nil
 }
 
-func (c *ClickHouseConnection) GetForeignKeysReferencingTable(tableName string) ([]ForeignKey, error) {
+func (c *ClickHouseConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	// Return empty list gracefully
-	return []ForeignKey{}, nil
+	return []db.ForeignKey{}, nil
 }
 
 func (c *ClickHouseConnection) GetUniqueConstraints(tableName string) ([]string, error) {
@@ -316,4 +317,8 @@ func (c *ClickHouseConnection) ApplyRowLimit(sql string, limit int) string {
 	}
 
 	return fmt.Sprintf("%s\nLIMIT %d", strings.TrimRight(sql, ";"), limit)
+}
+
+func init() {
+	db.Register("clickhouse", New)
 }

@@ -1,20 +1,21 @@
-package db
+package mysql
 
 import (
 	"database/sql"
 	"fmt"
+	"github.com/eduardofuncao/squix/internal/db"
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 type MySQLConnection struct {
-	*BaseConnection
+	*db.BaseConnection
 	db *sql.DB
 }
 
-func NewMySQLConnection(name, connStr string) (*MySQLConnection, error) {
-	bc := &BaseConnection{
+func New(name, connStr string) (db.DatabaseConnection, error) {
+	bc := &db.BaseConnection{
 		Name:       name,
 		DbType:     "mysql",
 		ConnString: connStr,
@@ -81,7 +82,7 @@ func (m *MySQLConnection) Exec(sql string, args ...any) error {
 
 func (m *MySQLConnection) GetTableMetadata(
 	tableName string,
-) (*TableMetadata, error) {
+) (*db.TableMetadata, error) {
 	if m.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -102,7 +103,7 @@ func (m *MySQLConnection) GetTableMetadata(
 	}
 	defer rows.Close()
 
-	metadata := &TableMetadata{
+	metadata := &db.TableMetadata{
 		TableName: tableName,
 	}
 
@@ -143,7 +144,7 @@ func (m *MySQLConnection) GetTableMetadata(
 	return metadata, nil
 }
 
-func (m *MySQLConnection) GetForeignKeys(tableName string) ([]ForeignKey, error) {
+func (m *MySQLConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if m.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -166,9 +167,9 @@ func (m *MySQLConnection) GetForeignKeys(tableName string) ([]ForeignKey, error)
 	}
 	defer rows.Close()
 
-	var foreignKeys []ForeignKey
+	var foreignKeys []db.ForeignKey
 	for rows.Next() {
-		var fk ForeignKey
+		var fk db.ForeignKey
 		if err := rows.Scan(&fk.Column, &fk.ReferencedTable, &fk.ReferencedColumn); err == nil {
 			foreignKeys = append(foreignKeys, fk)
 		}
@@ -177,7 +178,7 @@ func (m *MySQLConnection) GetForeignKeys(tableName string) ([]ForeignKey, error)
 	return foreignKeys, nil
 }
 
-func (m *MySQLConnection) GetForeignKeysReferencingTable(tableName string) ([]ForeignKey, error) {
+func (m *MySQLConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if m.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -200,9 +201,9 @@ func (m *MySQLConnection) GetForeignKeysReferencingTable(tableName string) ([]Fo
 	}
 	defer rows.Close()
 
-	var foreignKeys []ForeignKey
+	var foreignKeys []db.ForeignKey
 	for rows.Next() {
-		var fk ForeignKey
+		var fk db.ForeignKey
 		// Note: In this reverse query, COLUMN_NAME is the FK column in the other table,
 		// TABLE_NAME is the other table, and REFERENCED_COLUMN_NAME is in this table
 		if err := rows.Scan(&fk.Column, &fk.ReferencedTable, &fk.ReferencedColumn); err == nil {
@@ -361,4 +362,9 @@ func (m *MySQLConnection) BuildDeleteStatement(
 
 func (m *MySQLConnection) GetPlaceholder(paramIndex int) string {
 	return "?"
+}
+
+func init() {
+	db.Register("mysql", New)
+	db.Register("mariadb", New)
 }

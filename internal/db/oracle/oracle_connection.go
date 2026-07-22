@@ -1,20 +1,21 @@
-package db
+package oracle
 
 import (
 	"database/sql"
 	"fmt"
+	"github.com/eduardofuncao/squix/internal/db"
 	"strings"
 
 	_ "github.com/sijms/go-ora/v2"
 )
 
 type OracleConnection struct {
-	*BaseConnection
+	*db.BaseConnection
 	db *sql.DB
 }
 
-func NewOracleConnection(name, connStr string) (*OracleConnection, error) {
-	bc := &BaseConnection{
+func New(name, connStr string) (db.DatabaseConnection, error) {
+	bc := &db.BaseConnection{
 		Name:       name,
 		DbType:     "oracle",
 		ConnString: connStr,
@@ -71,7 +72,7 @@ func (oc *OracleConnection) Exec(sql string, args ...any) error {
 	return err
 }
 
-func (oc *OracleConnection) GetTableMetadata(tableName string) (*TableMetadata, error) {
+func (oc *OracleConnection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
 	if oc.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -114,7 +115,7 @@ func (oc *OracleConnection) GetTableMetadata(tableName string) (*TableMetadata, 
 		`
 	}
 
-	metadata := &TableMetadata{
+	metadata := &db.TableMetadata{
 		TableName: tableName,
 	}
 
@@ -319,7 +320,7 @@ func (oc *OracleConnection) GetViews() ([]string, error) {
 	return views, nil
 }
 
-func (oc *OracleConnection) GetForeignKeys(tableName string) ([]ForeignKey, error) {
+func (oc *OracleConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if oc.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -367,9 +368,9 @@ func (oc *OracleConnection) GetForeignKeys(tableName string) ([]ForeignKey, erro
 	}
 	defer rows.Close()
 
-	var foreignKeys []ForeignKey
+	var foreignKeys []db.ForeignKey
 	for rows.Next() {
-		var fk ForeignKey
+		var fk db.ForeignKey
 		if err := rows.Scan(&fk.Column, &fk.ReferencedTable, &fk.ReferencedColumn); err == nil {
 			foreignKeys = append(foreignKeys, fk)
 		}
@@ -378,7 +379,7 @@ func (oc *OracleConnection) GetForeignKeys(tableName string) ([]ForeignKey, erro
 	return foreignKeys, nil
 }
 
-func (oc *OracleConnection) GetForeignKeysReferencingTable(tableName string) ([]ForeignKey, error) {
+func (oc *OracleConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if oc.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -426,9 +427,9 @@ func (oc *OracleConnection) GetForeignKeysReferencingTable(tableName string) ([]
 	}
 	defer rows.Close()
 
-	var foreignKeys []ForeignKey
+	var foreignKeys []db.ForeignKey
 	for rows.Next() {
-		var fk ForeignKey
+		var fk db.ForeignKey
 		if err := rows.Scan(&fk.Column, &fk.ReferencedTable, &fk.ReferencedColumn); err == nil {
 			foreignKeys = append(foreignKeys, fk)
 		}
@@ -554,4 +555,9 @@ func (oc *OracleConnection) BuildDeleteStatement(tableName, primaryKeyCol, pkVal
 
 func (oc *OracleConnection) GetPlaceholder(paramIndex int) string {
 	return fmt.Sprintf(":%d", paramIndex)
+}
+
+func init() {
+	db.Register("godror", New)
+	db.Register("oracle", New)
 }
