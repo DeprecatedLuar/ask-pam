@@ -156,7 +156,7 @@ func New(
 		cellWidth:        columnWidth,
 		isTablesList:     false,
 		uiVisibility:     visibility,
-		keyMap:            keyMap,
+		keyMap:           keyMap,
 		searchMode:       false,
 		searchQuery:      "",
 		searchMatches:    []CellPosition{},
