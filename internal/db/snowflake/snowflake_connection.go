@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"encoding/pem"
 	"fmt"
-	"github.com/eduardofuncao/squix/internal/db"
 	"net/url"
 	"os"
 	"strings"
 
+	"github.com/eduardofuncao/squix/internal/db"
 	"github.com/snowflakedb/gosnowflake"
 	"github.com/youmark/pkcs8"
 )

@@ -3,9 +3,9 @@ package oracle
 import (
 	"database/sql"
 	"fmt"
-	"github.com/eduardofuncao/squix/internal/db"
 	"strings"
 
+	"github.com/eduardofuncao/squix/internal/db"
 	_ "github.com/sijms/go-ora/v2"
 )
 

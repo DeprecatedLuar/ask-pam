@@ -3,9 +3,9 @@ package sqlite
 import (
 	"database/sql"
 	"fmt"
-	"github.com/eduardofuncao/squix/internal/db"
 	"strings"
 
+	"github.com/eduardofuncao/squix/internal/db"
 	_ "modernc.org/sqlite"
 )
 

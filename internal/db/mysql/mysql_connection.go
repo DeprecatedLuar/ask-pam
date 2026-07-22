@@ -3,9 +3,9 @@ package mysql
 import (
 	"database/sql"
 	"fmt"
-	"github.com/eduardofuncao/squix/internal/db"
 	"strings"
 
+	"github.com/eduardofuncao/squix/internal/db"
 	_ "github.com/go-sql-driver/mysql"
 )
 

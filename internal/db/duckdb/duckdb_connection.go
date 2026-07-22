@@ -5,10 +5,10 @@ package duckdb
 import (
 	"database/sql"
 	"fmt"
-	"github.com/eduardofuncao/squix/internal/db"
 	"strings"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+	"github.com/eduardofuncao/squix/internal/db"
 )
 
 type DuckDBConnection struct {

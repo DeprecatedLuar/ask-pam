@@ -3,11 +3,11 @@ package clickhouse
 import (
 	"database/sql"
 	"fmt"
-	"github.com/eduardofuncao/squix/internal/db"
 	"net/url"
 	"strings"
 
 	_ "github.com/ClickHouse/clickhouse-go/v2"
+	"github.com/eduardofuncao/squix/internal/db"
 )
 
 type ClickHouseConnection struct {
