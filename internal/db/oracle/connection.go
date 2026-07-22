@@ -9,7 +9,7 @@ import (
 	_ "github.com/sijms/go-ora/v2"
 )
 
-type OracleConnection struct {
+type Connection struct {
 	*db.BaseConnection
 	db *sql.DB
 }
@@ -20,10 +20,10 @@ func New(name, connStr string) (db.DatabaseConnection, error) {
 		DbType:     "oracle",
 		ConnString: connStr,
 	}
-	return &OracleConnection{BaseConnection: bc}, nil
+	return &Connection{BaseConnection: bc}, nil
 }
 
-func (oc *OracleConnection) Open() error {
+func (oc *Connection) Open() error {
 	db, err := sql.Open("oracle", oc.ConnString)
 	if err != nil {
 		return err
@@ -41,21 +41,21 @@ func (oc *OracleConnection) Open() error {
 	return nil
 }
 
-func (oc *OracleConnection) Ping() error {
+func (oc *Connection) Ping() error {
 	if oc.db == nil {
 		return fmt.Errorf("database is not open")
 	}
 	return oc.db.Ping()
 }
 
-func (oc *OracleConnection) Close() error {
+func (oc *Connection) Close() error {
 	if oc.db != nil {
 		return oc.db.Close()
 	}
 	return nil
 }
 
-func (oc *OracleConnection) Query(queryName string, args ...any) (any, error) {
+func (oc *Connection) Query(queryName string, args ...any) (any, error) {
 	query, exists := oc.Queries[queryName]
 	if !exists {
 		return nil, fmt.Errorf("query not found: %s", queryName)
@@ -63,16 +63,16 @@ func (oc *OracleConnection) Query(queryName string, args ...any) (any, error) {
 	return oc.db.Query(query.SQL, args...)
 }
 
-func (oc *OracleConnection) ExecQuery(sql string, args ...any) (*sql.Rows, error) {
+func (oc *Connection) ExecQuery(sql string, args ...any) (*sql.Rows, error) {
 	return oc.db.Query(sql, args...)
 }
 
-func (oc *OracleConnection) Exec(sql string, args ...any) error {
+func (oc *Connection) Exec(sql string, args ...any) error {
 	_, err := oc.db.Exec(sql, args...)
 	return err
 }
 
-func (oc *OracleConnection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
+func (oc *Connection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
 	if oc.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -212,7 +212,7 @@ func (oc *OracleConnection) GetTableMetadata(tableName string) (*db.TableMetadat
 	return metadata, nil
 }
 
-func (oc *OracleConnection) GetInfoSQL(infoType string) string {
+func (oc *Connection) GetInfoSQL(infoType string) string {
 	schema := strings.ToUpper(oc.Schema)
 	if schema == "" {
 		schema = "SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')"
@@ -238,7 +238,7 @@ func (oc *OracleConnection) GetInfoSQL(infoType string) string {
 	}
 }
 
-func (oc *OracleConnection) GetTables() ([]string, error) {
+func (oc *Connection) GetTables() ([]string, error) {
 	if oc.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -279,7 +279,7 @@ func (oc *OracleConnection) GetTables() ([]string, error) {
 	return tables, nil
 }
 
-func (oc *OracleConnection) GetViews() ([]string, error) {
+func (oc *Connection) GetViews() ([]string, error) {
 	if oc.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -320,7 +320,7 @@ func (oc *OracleConnection) GetViews() ([]string, error) {
 	return views, nil
 }
 
-func (oc *OracleConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
+func (oc *Connection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if oc.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -379,7 +379,7 @@ func (oc *OracleConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, e
 	return foreignKeys, nil
 }
 
-func (oc *OracleConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
+func (oc *Connection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if oc.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -438,7 +438,7 @@ func (oc *OracleConnection) GetForeignKeysReferencingTable(tableName string) ([]
 	return foreignKeys, nil
 }
 
-func (oc *OracleConnection) GetUniqueConstraints(tableName string) ([]string, error) {
+func (oc *Connection) GetUniqueConstraints(tableName string) ([]string, error) {
 	if oc.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -505,7 +505,7 @@ func (oc *OracleConnection) GetUniqueConstraints(tableName string) ([]string, er
 	return uniqueColumns, nil
 }
 
-func (oc *OracleConnection) BuildUpdateStatement(tableName, columnName, currentValue, pkColumn, pkValue string) string {
+func (oc *Connection) BuildUpdateStatement(tableName, columnName, currentValue, pkColumn, pkValue string) string {
 	escapedValue := strings.ReplaceAll(currentValue, "'", "''")
 
 	if pkColumn != "" && pkValue != "" {
@@ -528,7 +528,7 @@ func (oc *OracleConnection) BuildUpdateStatement(tableName, columnName, currentV
 	)
 }
 
-func (oc *OracleConnection) ApplyRowLimit(sql string, limit int) string {
+func (oc *Connection) ApplyRowLimit(sql string, limit int) string {
 	trimmedSQL := strings.ToUpper(strings.TrimSpace(sql))
 	if !strings.HasPrefix(trimmedSQL, "SELECT") && !strings.HasPrefix(trimmedSQL, "WITH") {
 		return sql
@@ -542,7 +542,7 @@ func (oc *OracleConnection) ApplyRowLimit(sql string, limit int) string {
 	return fmt.Sprintf("%s\nFETCH FIRST %d ROWS ONLY", strings.TrimRight(sql, ";"), limit)
 }
 
-func (oc *OracleConnection) BuildDeleteStatement(tableName, primaryKeyCol, pkValue string) string {
+func (oc *Connection) BuildDeleteStatement(tableName, primaryKeyCol, pkValue string) string {
 	escapedPkValue := strings.ReplaceAll(pkValue, "'", "''")
 
 	return fmt.Sprintf(
@@ -553,7 +553,7 @@ func (oc *OracleConnection) BuildDeleteStatement(tableName, primaryKeyCol, pkVal
 	)
 }
 
-func (oc *OracleConnection) GetPlaceholder(paramIndex int) string {
+func (oc *Connection) GetPlaceholder(paramIndex int) string {
 	return fmt.Sprintf(":%d", paramIndex)
 }
 

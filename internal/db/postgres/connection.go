@@ -9,7 +9,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type PostgresConnection struct {
+type Connection struct {
 	*db.BaseConnection
 	db *sql.DB
 }
@@ -20,10 +20,10 @@ func New(name, connStr string) (db.DatabaseConnection, error) {
 		DbType:     "postgres",
 		ConnString: connStr,
 	}
-	return &PostgresConnection{BaseConnection: bc}, nil
+	return &Connection{BaseConnection: bc}, nil
 }
 
-func (p *PostgresConnection) Open() error {
+func (p *Connection) Open() error {
 	db, err := sql.Open("postgres", p.ConnString)
 	if err != nil {
 		return err
@@ -42,21 +42,21 @@ func (p *PostgresConnection) Open() error {
 	return nil
 }
 
-func (oc *PostgresConnection) Ping() error {
+func (oc *Connection) Ping() error {
 	if oc.db == nil {
 		return fmt.Errorf("database is not open")
 	}
 	return oc.db.Ping()
 }
 
-func (p *PostgresConnection) Close() error {
+func (p *Connection) Close() error {
 	if p.db != nil {
 		return p.db.Close()
 	}
 	return nil
 }
 
-func (p *PostgresConnection) Query(queryName string, args ...any) (any, error) {
+func (p *Connection) Query(queryName string, args ...any) (any, error) {
 	query, exists := p.Queries[queryName]
 	if !exists {
 		return nil, fmt.Errorf("query not found: %s", queryName)
@@ -64,19 +64,19 @@ func (p *PostgresConnection) Query(queryName string, args ...any) (any, error) {
 	return p.db.Query(query.SQL, args...)
 }
 
-func (p *PostgresConnection) ExecQuery(
+func (p *Connection) ExecQuery(
 	sql string,
 	args ...any,
 ) (*sql.Rows, error) {
 	return p.db.Query(sql, args...)
 }
 
-func (p *PostgresConnection) Exec(sql string, args ...any) error {
+func (p *Connection) Exec(sql string, args ...any) error {
 	_, err := p.db.Exec(sql, args...)
 	return err
 }
 
-func (p *PostgresConnection) GetTableMetadata(
+func (p *Connection) GetTableMetadata(
 	tableName string,
 ) (*db.TableMetadata, error) {
 	if p.db == nil {
@@ -160,7 +160,7 @@ func (p *PostgresConnection) GetTableMetadata(
 	return metadata, nil
 }
 
-func (p *PostgresConnection) GetInfoSQL(infoType string) string {
+func (p *Connection) GetInfoSQL(infoType string) string {
 	schema := p.Schema
 	if schema == "" {
 		schema = "current_schema()"
@@ -193,7 +193,7 @@ func (p *PostgresConnection) GetInfoSQL(infoType string) string {
 	}
 }
 
-func (p *PostgresConnection) GetTables() ([]string, error) {
+func (p *Connection) GetTables() ([]string, error) {
 	if p.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -234,7 +234,7 @@ func (p *PostgresConnection) GetTables() ([]string, error) {
 	return tables, nil
 }
 
-func (p *PostgresConnection) GetViews() ([]string, error) {
+func (p *Connection) GetViews() ([]string, error) {
 	if p.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -274,7 +274,7 @@ func (p *PostgresConnection) GetViews() ([]string, error) {
 	return views, nil
 }
 
-func (p *PostgresConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
+func (p *Connection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if p.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -325,7 +325,7 @@ func (p *PostgresConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, 
 	return foreignKeys, nil
 }
 
-func (p *PostgresConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
+func (p *Connection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if p.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -383,7 +383,7 @@ func (p *PostgresConnection) GetForeignKeysReferencingTable(tableName string) ([
 	return foreignKeys, nil
 }
 
-func (p *PostgresConnection) GetUniqueConstraints(tableName string) ([]string, error) {
+func (p *Connection) GetUniqueConstraints(tableName string) ([]string, error) {
 	if p.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -428,7 +428,7 @@ func (p *PostgresConnection) GetUniqueConstraints(tableName string) ([]string, e
 	return uniqueColumns, nil
 }
 
-func (p *PostgresConnection) BuildUpdateStatement(
+func (p *Connection) BuildUpdateStatement(
 	tableName, columnName, currentValue, pkColumn, pkValue string,
 ) string {
 	escapedValue := strings.ReplaceAll(currentValue, "'", "''")
@@ -453,7 +453,7 @@ func (p *PostgresConnection) BuildUpdateStatement(
 	)
 }
 
-func (c *PostgresConnection) BuildDeleteStatement(
+func (c *Connection) BuildDeleteStatement(
 	tableName, primaryKeyCol, pkValue string,
 ) string {
 	return fmt.Sprintf(
@@ -464,7 +464,7 @@ func (c *PostgresConnection) BuildDeleteStatement(
 	)
 }
 
-func (p *PostgresConnection) GetPlaceholder(paramIndex int) string {
+func (p *Connection) GetPlaceholder(paramIndex int) string {
 	return fmt.Sprintf("$%d", paramIndex)
 }
 

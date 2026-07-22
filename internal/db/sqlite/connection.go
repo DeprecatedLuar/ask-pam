@@ -9,7 +9,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-type SQLiteConnection struct {
+type Connection struct {
 	*db.BaseConnection
 	db *sql.DB
 }
@@ -20,10 +20,10 @@ func New(name, connStr string) (db.DatabaseConnection, error) {
 		DbType:     "sqlite",
 		ConnString: connStr,
 	}
-	return &SQLiteConnection{BaseConnection: bc}, nil
+	return &Connection{BaseConnection: bc}, nil
 }
 
-func (s *SQLiteConnection) Open() error {
+func (s *Connection) Open() error {
 	db, err := sql.Open("sqlite", s.ConnString)
 	if err != nil {
 		return err
@@ -32,21 +32,21 @@ func (s *SQLiteConnection) Open() error {
 	return nil
 }
 
-func (s *SQLiteConnection) Ping() error {
+func (s *Connection) Ping() error {
 	if s.db == nil {
 		return fmt.Errorf("database is not open")
 	}
 	return s.db.Ping()
 }
 
-func (s *SQLiteConnection) Close() error {
+func (s *Connection) Close() error {
 	if s.db != nil {
 		return s.db.Close()
 	}
 	return nil
 }
 
-func (s *SQLiteConnection) Query(queryName string, args ...any) (any, error) {
+func (s *Connection) Query(queryName string, args ...any) (any, error) {
 	query, exists := s.Queries[queryName]
 	if !exists {
 		return nil, fmt.Errorf("query not found: %s", queryName)
@@ -54,19 +54,19 @@ func (s *SQLiteConnection) Query(queryName string, args ...any) (any, error) {
 	return s.db.Query(query.SQL, args...)
 }
 
-func (s *SQLiteConnection) ExecQuery(
+func (s *Connection) ExecQuery(
 	sql string,
 	args ...any,
 ) (*sql.Rows, error) {
 	return s.db.Query(sql, args...)
 }
 
-func (s *SQLiteConnection) Exec(sql string, args ...any) error {
+func (s *Connection) Exec(sql string, args ...any) error {
 	_, err := s.db.Exec(sql, args...)
 	return err
 }
 
-func (s *SQLiteConnection) GetTableMetadata(
+func (s *Connection) GetTableMetadata(
 	tableName string,
 ) (*db.TableMetadata, error) {
 	if s.db == nil {
@@ -119,7 +119,7 @@ func (s *SQLiteConnection) GetTableMetadata(
 	return metadata, nil
 }
 
-func (s *SQLiteConnection) GetInfoSQL(infoType string) string {
+func (s *Connection) GetInfoSQL(infoType string) string {
 	switch infoType {
 	case "tables":
 		return `SELECT name
@@ -137,7 +137,7 @@ func (s *SQLiteConnection) GetInfoSQL(infoType string) string {
 	}
 }
 
-func (s *SQLiteConnection) GetTables() ([]string, error) {
+func (s *Connection) GetTables() ([]string, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -167,7 +167,7 @@ func (s *SQLiteConnection) GetTables() ([]string, error) {
 	return tables, nil
 }
 
-func (s *SQLiteConnection) GetViews() ([]string, error) {
+func (s *Connection) GetViews() ([]string, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -196,7 +196,7 @@ func (s *SQLiteConnection) GetViews() ([]string, error) {
 	return views, nil
 }
 
-func (s *SQLiteConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
+func (s *Connection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -227,7 +227,7 @@ func (s *SQLiteConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, er
 	return foreignKeys, nil
 }
 
-func (s *SQLiteConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
+func (s *Connection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -286,7 +286,7 @@ func (s *SQLiteConnection) GetForeignKeysReferencingTable(tableName string) ([]d
 	return foreignKeys, nil
 }
 
-func (s *SQLiteConnection) GetUniqueConstraints(tableName string) ([]string, error) {
+func (s *Connection) GetUniqueConstraints(tableName string) ([]string, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -334,7 +334,7 @@ func (s *SQLiteConnection) GetUniqueConstraints(tableName string) ([]string, err
 	return uniqueColumns, nil
 }
 
-func (s *SQLiteConnection) BuildUpdateStatement(
+func (s *Connection) BuildUpdateStatement(
 	tableName, columnName, currentValue, pkColumn, pkValue string,
 ) string {
 	escapedValue := strings.ReplaceAll(currentValue, "'", "''")
@@ -359,7 +359,7 @@ func (s *SQLiteConnection) BuildUpdateStatement(
 	)
 }
 
-func (s *SQLiteConnection) BuildDeleteStatement(
+func (s *Connection) BuildDeleteStatement(
 	tableName, primaryKeyCol, pkValue string,
 ) string {
 	escapedPkValue := strings.ReplaceAll(pkValue, "'", "''")
@@ -372,7 +372,7 @@ func (s *SQLiteConnection) BuildDeleteStatement(
 	)
 }
 
-func (s *SQLiteConnection) GetPlaceholder(paramIndex int) string {
+func (s *Connection) GetPlaceholder(paramIndex int) string {
 	return "?"
 }
 

@@ -14,7 +14,7 @@ import (
 	"github.com/youmark/pkcs8"
 )
 
-type SnowflakeConnection struct {
+type Connection struct {
 	*db.BaseConnection
 	db        *sql.DB
 	warehouse string
@@ -28,7 +28,7 @@ func New(name, connStr string) (db.DatabaseConnection, error) {
 		ConnString: connStr,
 	}
 
-	conn := &SnowflakeConnection{BaseConnection: bc}
+	conn := &Connection{BaseConnection: bc}
 
 	parsedURL, err := url.Parse(connStr)
 	if err == nil {
@@ -43,7 +43,7 @@ func New(name, connStr string) (db.DatabaseConnection, error) {
 	return conn, nil
 }
 
-func (s *SnowflakeConnection) Open() error {
+func (s *Connection) Open() error {
 	db, err := s.openDB()
 	if err != nil {
 		return err
@@ -81,7 +81,7 @@ func (s *SnowflakeConnection) Open() error {
 }
 
 // openDB parses privateKeyFile from the DSN manually; gosnowflake key-file reading is unreliable.
-func (s *SnowflakeConnection) openDB() (*sql.DB, error) {
+func (s *Connection) openDB() (*sql.DB, error) {
 	parsedURL, err := url.Parse(s.ConnString)
 	if err != nil {
 		return sql.Open("snowflake", s.ConnString)
@@ -136,21 +136,21 @@ func loadRSAPrivateKey(path, passphrase string) (*rsa.PrivateKey, error) {
 	return rsaKey, nil
 }
 
-func (s *SnowflakeConnection) Ping() error {
+func (s *Connection) Ping() error {
 	if s.db == nil {
 		return fmt.Errorf("database is not open")
 	}
 	return s.db.Ping()
 }
 
-func (s *SnowflakeConnection) Close() error {
+func (s *Connection) Close() error {
 	if s.db != nil {
 		return s.db.Close()
 	}
 	return nil
 }
 
-func (s *SnowflakeConnection) Query(queryName string, args ...any) (any, error) {
+func (s *Connection) Query(queryName string, args ...any) (any, error) {
 	query, exists := s.Queries[queryName]
 	if !exists {
 		return nil, fmt.Errorf("query not found: %s", queryName)
@@ -158,11 +158,11 @@ func (s *SnowflakeConnection) Query(queryName string, args ...any) (any, error) 
 	return s.db.Query(query.SQL, args...)
 }
 
-func (s *SnowflakeConnection) ExecQuery(sql string, args ...any) (*sql.Rows, error) {
+func (s *Connection) ExecQuery(sql string, args ...any) (*sql.Rows, error) {
 	return s.db.Query(sql, args...)
 }
 
-func (s *SnowflakeConnection) Exec(sql string, args ...any) error {
+func (s *Connection) Exec(sql string, args ...any) error {
 	_, err := s.db.Exec(sql, args...)
 	return err
 }
@@ -211,7 +211,7 @@ func scanShowColumns(rows *sql.Rows, wantCols []string) ([][]string, error) {
 	return result, nil
 }
 
-func (s *SnowflakeConnection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
+func (s *Connection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -264,7 +264,7 @@ func (s *SnowflakeConnection) GetTableMetadata(tableName string) (*db.TableMetad
 	return metadata, nil
 }
 
-func (s *SnowflakeConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
+func (s *Connection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if s.db == nil {
 		return []db.ForeignKey{}, nil
 	}
@@ -284,7 +284,7 @@ func (s *SnowflakeConnection) GetForeignKeys(tableName string) ([]db.ForeignKey,
 	return fks, nil
 }
 
-func (s *SnowflakeConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
+func (s *Connection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if s.db == nil {
 		return []db.ForeignKey{}, nil
 	}
@@ -307,11 +307,11 @@ func (s *SnowflakeConnection) GetForeignKeysReferencingTable(tableName string) (
 // GetUniqueConstraints returns empty for Snowflake — SHOW UNIQUE KEYS does not
 // exist and Snowflake lacks INFORMATION_SCHEMA.KEY_COLUMN_USAGE, so
 // column-level unique constraint mapping is not possible.
-func (s *SnowflakeConnection) GetUniqueConstraints(tableName string) ([]string, error) {
+func (s *Connection) GetUniqueConstraints(tableName string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (s *SnowflakeConnection) GetInfoSQL(infoType string) string {
+func (s *Connection) GetInfoSQL(infoType string) string {
 	schema := s.Schema
 	var schemaFilter string
 	if schema != "" {
@@ -342,7 +342,7 @@ func (s *SnowflakeConnection) GetInfoSQL(infoType string) string {
 	}
 }
 
-func (s *SnowflakeConnection) GetTables() ([]string, error) {
+func (s *Connection) GetTables() ([]string, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -371,7 +371,7 @@ func (s *SnowflakeConnection) GetTables() ([]string, error) {
 	return tables, nil
 }
 
-func (s *SnowflakeConnection) GetViews() ([]string, error) {
+func (s *Connection) GetViews() ([]string, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -399,7 +399,7 @@ func (s *SnowflakeConnection) GetViews() ([]string, error) {
 	return views, nil
 }
 
-func (s *SnowflakeConnection) BuildUpdateStatement(
+func (s *Connection) BuildUpdateStatement(
 	tableName, columnName, currentValue, pkColumn, pkValue string,
 ) string {
 	escapedValue := strings.ReplaceAll(currentValue, "'", "''")
@@ -418,7 +418,7 @@ func (s *SnowflakeConnection) BuildUpdateStatement(
 	)
 }
 
-func (s *SnowflakeConnection) BuildDeleteStatement(tableName, primaryKeyCol, pkValue string) string {
+func (s *Connection) BuildDeleteStatement(tableName, primaryKeyCol, pkValue string) string {
 	escapedPkValue := strings.ReplaceAll(pkValue, "'", "''")
 	return fmt.Sprintf(
 		"DELETE FROM %s\nWHERE %s = '%s';",
@@ -426,11 +426,11 @@ func (s *SnowflakeConnection) BuildDeleteStatement(tableName, primaryKeyCol, pkV
 	)
 }
 
-func (s *SnowflakeConnection) GetPlaceholder(paramIndex int) string {
+func (s *Connection) GetPlaceholder(paramIndex int) string {
 	return "?"
 }
 
-func (s *SnowflakeConnection) ApplyRowLimit(sql string, limit int) string {
+func (s *Connection) ApplyRowLimit(sql string, limit int) string {
 	trimmedSQL := strings.ToUpper(strings.TrimSpace(sql))
 
 	if !strings.HasPrefix(trimmedSQL, "SELECT") {

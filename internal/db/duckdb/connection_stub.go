@@ -8,7 +8,7 @@ import (
 	"github.com/eduardofuncao/squix/internal/db"
 )
 
-type DuckDBConnection struct {
+type Connection struct {
 	*db.BaseConnection
 }
 
@@ -16,7 +16,7 @@ func New(name, connStr string) (db.DatabaseConnection, error) {
 	return nil, fmt.Errorf("duckdb driver not available: build with CGO_ENABLED=1 to enable")
 }
 
-func (d *DuckDBConnection) GetUniqueConstraints(tableName string) ([]string, error) {
+func (d *Connection) GetUniqueConstraints(tableName string) ([]string, error) {
 	return nil, fmt.Errorf("duckdb driver not available")
 }
 

@@ -11,7 +11,7 @@ import (
 	"github.com/eduardofuncao/squix/internal/db"
 )
 
-type DuckDBConnection struct {
+type Connection struct {
 	*db.BaseConnection
 	db *sql.DB
 }
@@ -22,10 +22,10 @@ func New(name, connStr string) (db.DatabaseConnection, error) {
 		DbType:     "duckdb",
 		ConnString: connStr,
 	}
-	return &DuckDBConnection{BaseConnection: bc}, nil
+	return &Connection{BaseConnection: bc}, nil
 }
 
-func (d *DuckDBConnection) Open() error {
+func (d *Connection) Open() error {
 	db, err := sql.Open("duckdb", d.ConnString)
 	if err != nil {
 		return fmt.Errorf("failed to open duckdb database: %w", err)
@@ -34,21 +34,21 @@ func (d *DuckDBConnection) Open() error {
 	return nil
 }
 
-func (d *DuckDBConnection) Ping() error {
+func (d *Connection) Ping() error {
 	if d.db == nil {
 		return fmt.Errorf("database is not open")
 	}
 	return d.db.Ping()
 }
 
-func (d *DuckDBConnection) Close() error {
+func (d *Connection) Close() error {
 	if d.db != nil {
 		return d.db.Close()
 	}
 	return nil
 }
 
-func (d *DuckDBConnection) Query(queryName string, args ...any) (any, error) {
+func (d *Connection) Query(queryName string, args ...any) (any, error) {
 	query, exists := d.Queries[queryName]
 	if !exists {
 		return nil, fmt.Errorf("query not found: %s", queryName)
@@ -56,16 +56,16 @@ func (d *DuckDBConnection) Query(queryName string, args ...any) (any, error) {
 	return d.db.Query(query.SQL, args...)
 }
 
-func (d *DuckDBConnection) ExecQuery(sql string, args ...any) (*sql.Rows, error) {
+func (d *Connection) ExecQuery(sql string, args ...any) (*sql.Rows, error) {
 	return d.db.Query(sql, args...)
 }
 
-func (d *DuckDBConnection) Exec(sql string, args ...any) error {
+func (d *Connection) Exec(sql string, args ...any) error {
 	_, err := d.db.Exec(sql, args...)
 	return err
 }
 
-func (d *DuckDBConnection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
+func (d *Connection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
 	if d.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -123,7 +123,7 @@ func (d *DuckDBConnection) GetTableMetadata(tableName string) (*db.TableMetadata
 	return metadata, nil
 }
 
-func (d *DuckDBConnection) GetInfoSQL(infoType string) string {
+func (d *Connection) GetInfoSQL(infoType string) string {
 	switch infoType {
 	case "tables":
 		return `SELECT table_schema as schema,
@@ -143,7 +143,7 @@ func (d *DuckDBConnection) GetInfoSQL(infoType string) string {
 	}
 }
 
-func (d *DuckDBConnection) GetTables() ([]string, error) {
+func (d *Connection) GetTables() ([]string, error) {
 	if d.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -173,7 +173,7 @@ func (d *DuckDBConnection) GetTables() ([]string, error) {
 	return tables, nil
 }
 
-func (d *DuckDBConnection) GetViews() ([]string, error) {
+func (d *Connection) GetViews() ([]string, error) {
 	if d.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -202,7 +202,7 @@ func (d *DuckDBConnection) GetViews() ([]string, error) {
 	return views, nil
 }
 
-func (d *DuckDBConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
+func (d *Connection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if d.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -244,7 +244,7 @@ func (d *DuckDBConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, er
 	return foreignKeys, nil
 }
 
-func (d *DuckDBConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
+func (d *Connection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if d.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -286,7 +286,7 @@ func (d *DuckDBConnection) GetForeignKeysReferencingTable(tableName string) ([]d
 	return foreignKeys, nil
 }
 
-func (d *DuckDBConnection) GetUniqueConstraints(tableName string) ([]string, error) {
+func (d *Connection) GetUniqueConstraints(tableName string) ([]string, error) {
 	if d.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}

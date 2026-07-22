@@ -9,7 +9,7 @@ import (
 	_ "github.com/microsoft/go-mssqldb"
 )
 
-type SQLServerConnection struct {
+type Connection struct {
 	*db.BaseConnection
 	db *sql.DB
 }
@@ -20,10 +20,10 @@ func New(name, connStr string) (db.DatabaseConnection, error) {
 		DbType:     "sqlserver",
 		ConnString: connStr,
 	}
-	return &SQLServerConnection{BaseConnection: bc}, nil
+	return &Connection{BaseConnection: bc}, nil
 }
 
-func (s *SQLServerConnection) Open() error {
+func (s *Connection) Open() error {
 	db, err := sql.Open("sqlserver", s.ConnString)
 	if err != nil {
 		return err
@@ -33,21 +33,21 @@ func (s *SQLServerConnection) Open() error {
 	return nil
 }
 
-func (s *SQLServerConnection) Ping() error {
+func (s *Connection) Ping() error {
 	if s.db == nil {
 		return fmt.Errorf("database is not open")
 	}
 	return s.db.Ping()
 }
 
-func (s *SQLServerConnection) Close() error {
+func (s *Connection) Close() error {
 	if s.db != nil {
 		return s.db.Close()
 	}
 	return nil
 }
 
-func (s *SQLServerConnection) Query(queryName string, args ...any) (any, error) {
+func (s *Connection) Query(queryName string, args ...any) (any, error) {
 	query, exists := s.Queries[queryName]
 	if !exists {
 		return nil, fmt.Errorf("query not found: %s", queryName)
@@ -55,16 +55,16 @@ func (s *SQLServerConnection) Query(queryName string, args ...any) (any, error) 
 	return s.db.Query(query.SQL, args...)
 }
 
-func (s *SQLServerConnection) ExecQuery(sql string, args ...any) (*sql.Rows, error) {
+func (s *Connection) ExecQuery(sql string, args ...any) (*sql.Rows, error) {
 	return s.db.Query(sql, args...)
 }
 
-func (s *SQLServerConnection) Exec(sql string, args ...any) error {
+func (s *Connection) Exec(sql string, args ...any) error {
 	_, err := s.db.Exec(sql, args...)
 	return err
 }
 
-func (s *SQLServerConnection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
+func (s *Connection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -150,7 +150,7 @@ func (s *SQLServerConnection) GetTableMetadata(tableName string) (*db.TableMetad
 	return metadata, nil
 }
 
-func (s *SQLServerConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
+func (s *Connection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -199,7 +199,7 @@ func (s *SQLServerConnection) GetForeignKeys(tableName string) ([]db.ForeignKey,
 	return foreignKeys, nil
 }
 
-func (s *SQLServerConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
+func (s *Connection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -248,7 +248,7 @@ func (s *SQLServerConnection) GetForeignKeysReferencingTable(tableName string) (
 	return foreignKeys, nil
 }
 
-func (s *SQLServerConnection) GetUniqueConstraints(tableName string) ([]string, error) {
+func (s *Connection) GetUniqueConstraints(tableName string) ([]string, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -293,7 +293,7 @@ func (s *SQLServerConnection) GetUniqueConstraints(tableName string) ([]string, 
 	return uniqueColumns, nil
 }
 
-func (s *SQLServerConnection) GetInfoSQL(infoType string) string {
+func (s *Connection) GetInfoSQL(infoType string) string {
 	schema := s.Schema
 	if schema == "" {
 		schema = "dbo"
@@ -322,7 +322,7 @@ func (s *SQLServerConnection) GetInfoSQL(infoType string) string {
 	}
 }
 
-func (s *SQLServerConnection) GetTables() ([]string, error) {
+func (s *Connection) GetTables() ([]string, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -352,7 +352,7 @@ func (s *SQLServerConnection) GetTables() ([]string, error) {
 	return tables, nil
 }
 
-func (s *SQLServerConnection) GetViews() ([]string, error) {
+func (s *Connection) GetViews() ([]string, error) {
 	if s.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -382,7 +382,7 @@ func (s *SQLServerConnection) GetViews() ([]string, error) {
 	return views, nil
 }
 
-func (s *SQLServerConnection) BuildUpdateStatement(tableName, columnName, currentValue, pkColumn, pkValue string) string {
+func (s *Connection) BuildUpdateStatement(tableName, columnName, currentValue, pkColumn, pkValue string) string {
 	quotedTableName := fmt.Sprintf("%s", tableName)
 	quotedColumnName := fmt.Sprintf("%s", columnName)
 
@@ -409,7 +409,7 @@ func (s *SQLServerConnection) BuildUpdateStatement(tableName, columnName, curren
 	)
 }
 
-func (s *SQLServerConnection) BuildDeleteStatement(tableName, primaryKeyCol, pkValue string) string {
+func (s *Connection) BuildDeleteStatement(tableName, primaryKeyCol, pkValue string) string {
 	quotedTableName := fmt.Sprintf("%s", tableName)
 	quotedPkColumn := fmt.Sprintf("%s", primaryKeyCol)
 	escapedPkValue := strings.ReplaceAll(pkValue, "'", "''")
@@ -422,11 +422,11 @@ func (s *SQLServerConnection) BuildDeleteStatement(tableName, primaryKeyCol, pkV
 	)
 }
 
-func (s *SQLServerConnection) GetPlaceholder(paramIndex int) string {
+func (s *Connection) GetPlaceholder(paramIndex int) string {
 	return "@p" + fmt.Sprintf("%d", paramIndex)
 }
 
-func (s *SQLServerConnection) ApplyRowLimit(sql string, limit int) string {
+func (s *Connection) ApplyRowLimit(sql string, limit int) string {
 	trimmedSQL := strings.ToUpper(strings.TrimSpace(sql))
 
 	if !strings.HasPrefix(trimmedSQL, "SELECT") && !strings.HasPrefix(trimmedSQL, "WITH") {

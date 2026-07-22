@@ -9,13 +9,13 @@ import (
 	_ "github.com/nakagami/firebirdsql"
 )
 
-type FirebirdConnection struct {
+type Connection struct {
 	*db.BaseConnection
 	db *sql.DB
 }
 
 func New(name, connStr string) (db.DatabaseConnection, error) {
-	return &FirebirdConnection{
+	return &Connection{
 		BaseConnection: &db.BaseConnection{
 			Name:       name,
 			DbType:     "firebird",
@@ -25,7 +25,7 @@ func New(name, connStr string) (db.DatabaseConnection, error) {
 	}, nil
 }
 
-func (f *FirebirdConnection) Open() error {
+func (f *Connection) Open() error {
 	var err error
 	f.db, err = sql.Open("firebirdsql", f.ConnString)
 	if err != nil {
@@ -39,21 +39,21 @@ func (f *FirebirdConnection) Open() error {
 	return nil
 }
 
-func (f *FirebirdConnection) Ping() error {
+func (f *Connection) Ping() error {
 	if f.db == nil {
 		return fmt.Errorf("database not initialized")
 	}
 	return f.db.Ping()
 }
 
-func (f *FirebirdConnection) Close() error {
+func (f *Connection) Close() error {
 	if f.db != nil {
 		return f.db.Close()
 	}
 	return nil
 }
 
-func (f *FirebirdConnection) Query(queryName string, args ...any) (any, error) {
+func (f *Connection) Query(queryName string, args ...any) (any, error) {
 	query, ok := f.Queries[queryName]
 	if !ok {
 		return nil, fmt.Errorf("query %s not found", queryName)
@@ -64,21 +64,21 @@ func (f *FirebirdConnection) Query(queryName string, args ...any) (any, error) {
 	return f.db.Query(query.SQL, args...)
 }
 
-func (f *FirebirdConnection) ExecQuery(sqlStr string, args ...any) (*sql.Rows, error) {
+func (f *Connection) ExecQuery(sqlStr string, args ...any) (*sql.Rows, error) {
 	return f.db.Query(sqlStr, args...)
 }
 
-func (f *FirebirdConnection) Exec(sqlStr string, args ...any) error {
+func (f *Connection) Exec(sqlStr string, args ...any) error {
 	_, err := f.db.Exec(sqlStr, args...)
 	return err
 }
 
-func (f *FirebirdConnection) SetSchema(schema string) {
+func (f *Connection) SetSchema(schema string) {
 	// Firebird doesn't use schemas like PostgreSQL
 	// No-op implementation
 }
 
-func (f *FirebirdConnection) GetInfoSQL(infoType string) string {
+func (f *Connection) GetInfoSQL(infoType string) string {
 	switch infoType {
 	case "tables":
 		return `
@@ -136,7 +136,7 @@ func (f *FirebirdConnection) GetInfoSQL(infoType string) string {
 	}
 }
 
-func (f *FirebirdConnection) GetTables() ([]string, error) {
+func (f *Connection) GetTables() ([]string, error) {
 	if f.db == nil {
 		return nil, fmt.Errorf("database not initialized")
 	}
@@ -166,7 +166,7 @@ func (f *FirebirdConnection) GetTables() ([]string, error) {
 	return tables, nil
 }
 
-func (f *FirebirdConnection) GetViews() ([]string, error) {
+func (f *Connection) GetViews() ([]string, error) {
 	if f.db == nil {
 		return nil, fmt.Errorf("database not initialized")
 	}
@@ -196,7 +196,7 @@ func (f *FirebirdConnection) GetViews() ([]string, error) {
 	return views, nil
 }
 
-func (f *FirebirdConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
+func (f *Connection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if f.db == nil {
 		return nil, fmt.Errorf("database not initialized")
 	}
@@ -236,7 +236,7 @@ func (f *FirebirdConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, 
 	return foreignKeys, nil
 }
 
-func (f *FirebirdConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
+func (f *Connection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if f.db == nil {
 		return nil, fmt.Errorf("database not initialized")
 	}
@@ -277,7 +277,7 @@ func (f *FirebirdConnection) GetForeignKeysReferencingTable(tableName string) ([
 	return foreignKeys, nil
 }
 
-func (f *FirebirdConnection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
+func (f *Connection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
 	metadata := &db.TableMetadata{
 		TableName: tableName,
 	}
@@ -333,11 +333,11 @@ func (f *FirebirdConnection) GetTableMetadata(tableName string) (*db.TableMetada
 	return metadata, nil
 }
 
-func (f *FirebirdConnection) BuildDeleteStatement(tableName, primaryKeyCol, pkValue string) string {
+func (f *Connection) BuildDeleteStatement(tableName, primaryKeyCol, pkValue string) string {
 	return fmt.Sprintf("DELETE FROM %s WHERE %s = '%s'", tableName, primaryKeyCol, pkValue)
 }
 
-func (f *FirebirdConnection) GetUniqueConstraints(tableName string) ([]string, error) {
+func (f *Connection) GetUniqueConstraints(tableName string) ([]string, error) {
 	if f.db == nil {
 		return nil, fmt.Errorf("database not initialized")
 	}
@@ -368,11 +368,11 @@ func (f *FirebirdConnection) GetUniqueConstraints(tableName string) ([]string, e
 	return uniqueColumns, nil
 }
 
-func (f *FirebirdConnection) GetPlaceholder(paramIndex int) string {
+func (f *Connection) GetPlaceholder(paramIndex int) string {
 	return "?"
 }
 
-func (f *FirebirdConnection) ApplyRowLimit(sqlStr string, limit int) string {
+func (f *Connection) ApplyRowLimit(sqlStr string, limit int) string {
 	// Firebird uses FIRST/SKIP syntax
 	// Convert SELECT ... FROM to SELECT FIRST n ... FROM
 	if !strings.Contains(strings.ToUpper(sqlStr), "SELECT") {

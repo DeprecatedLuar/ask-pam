@@ -10,7 +10,7 @@ import (
 	"github.com/eduardofuncao/squix/internal/db"
 )
 
-type ClickHouseConnection struct {
+type Connection struct {
 	*db.BaseConnection
 	db *sql.DB
 }
@@ -33,10 +33,10 @@ func New(name, connStr string) (db.DatabaseConnection, error) {
 		}
 	}
 
-	return &ClickHouseConnection{BaseConnection: bc}, nil
+	return &Connection{BaseConnection: bc}, nil
 }
 
-func (c *ClickHouseConnection) Open() error {
+func (c *Connection) Open() error {
 	db, err := sql.Open("clickhouse", c.ConnString)
 	if err != nil {
 		return err
@@ -55,21 +55,21 @@ func (c *ClickHouseConnection) Open() error {
 	return nil
 }
 
-func (c *ClickHouseConnection) Ping() error {
+func (c *Connection) Ping() error {
 	if c.db == nil {
 		return fmt.Errorf("database is not open")
 	}
 	return c.db.Ping()
 }
 
-func (c *ClickHouseConnection) Close() error {
+func (c *Connection) Close() error {
 	if c.db != nil {
 		return c.db.Close()
 	}
 	return nil
 }
 
-func (c *ClickHouseConnection) Query(queryName string, args ...any) (any, error) {
+func (c *Connection) Query(queryName string, args ...any) (any, error) {
 	query, exists := c.Queries[queryName]
 	if !exists {
 		return nil, fmt.Errorf("query not found: %s", queryName)
@@ -77,16 +77,16 @@ func (c *ClickHouseConnection) Query(queryName string, args ...any) (any, error)
 	return c.db.Query(query.SQL, args...)
 }
 
-func (c *ClickHouseConnection) ExecQuery(sql string, args ...any) (*sql.Rows, error) {
+func (c *Connection) ExecQuery(sql string, args ...any) (*sql.Rows, error) {
 	return c.db.Query(sql, args...)
 }
 
-func (c *ClickHouseConnection) Exec(sql string, args ...any) error {
+func (c *Connection) Exec(sql string, args ...any) error {
 	_, err := c.db.Exec(sql, args...)
 	return err
 }
 
-func (c *ClickHouseConnection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
+func (c *Connection) GetTableMetadata(tableName string) (*db.TableMetadata, error) {
 	if c.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -146,22 +146,22 @@ func (c *ClickHouseConnection) GetTableMetadata(tableName string) (*db.TableMeta
 	return metadata, nil
 }
 
-func (c *ClickHouseConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
+func (c *Connection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	// Return empty list gracefully
 	return []db.ForeignKey{}, nil
 }
 
-func (c *ClickHouseConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
+func (c *Connection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	// Return empty list gracefully
 	return []db.ForeignKey{}, nil
 }
 
-func (c *ClickHouseConnection) GetUniqueConstraints(tableName string) ([]string, error) {
+func (c *Connection) GetUniqueConstraints(tableName string) ([]string, error) {
 	// ClickHouse doesn't support traditional FKs or UNIQUE constraints
 	return []string{}, nil
 }
 
-func (c *ClickHouseConnection) GetInfoSQL(infoType string) string {
+func (c *Connection) GetInfoSQL(infoType string) string {
 	database := c.Schema
 	if database == "" {
 		database = "currentDatabase()"
@@ -191,7 +191,7 @@ func (c *ClickHouseConnection) GetInfoSQL(infoType string) string {
 	}
 }
 
-func (c *ClickHouseConnection) GetTables() ([]string, error) {
+func (c *Connection) GetTables() ([]string, error) {
 	if c.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -221,7 +221,7 @@ func (c *ClickHouseConnection) GetTables() ([]string, error) {
 	return tables, nil
 }
 
-func (c *ClickHouseConnection) GetViews() ([]string, error) {
+func (c *Connection) GetViews() ([]string, error) {
 	if c.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -251,7 +251,7 @@ func (c *ClickHouseConnection) GetViews() ([]string, error) {
 	return views, nil
 }
 
-func (c *ClickHouseConnection) BuildUpdateStatement(tableName, columnName, currentValue, pkColumn, pkValue string) string {
+func (c *Connection) BuildUpdateStatement(tableName, columnName, currentValue, pkColumn, pkValue string) string {
 	escapedValue := strings.ReplaceAll(currentValue, "'", "''")
 
 	if pkColumn != "" && pkValue != "" {
@@ -281,7 +281,7 @@ WHERE <condition>;`,
 	)
 }
 
-func (c *ClickHouseConnection) BuildDeleteStatement(tableName, primaryKeyCol, pkValue string) string {
+func (c *Connection) BuildDeleteStatement(tableName, primaryKeyCol, pkValue string) string {
 	escapedPkValue := strings.ReplaceAll(pkValue, "'", "''")
 
 	return fmt.Sprintf(`-- ClickHouse DELETE statement
@@ -298,11 +298,11 @@ WHERE %s = '%s';`,
 	)
 }
 
-func (c *ClickHouseConnection) GetPlaceholder(paramIndex int) string {
+func (c *Connection) GetPlaceholder(paramIndex int) string {
 	return "?"
 }
 
-func (c *ClickHouseConnection) ApplyRowLimit(sql string, limit int) string {
+func (c *Connection) ApplyRowLimit(sql string, limit int) string {
 	// ClickHouse uses standard SQL LIMIT syntax
 	trimmedSQL := strings.ToUpper(strings.TrimSpace(sql))
 

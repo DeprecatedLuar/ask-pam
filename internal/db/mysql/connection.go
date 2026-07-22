@@ -9,7 +9,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type MySQLConnection struct {
+type Connection struct {
 	*db.BaseConnection
 	db *sql.DB
 }
@@ -20,10 +20,10 @@ func New(name, connStr string) (db.DatabaseConnection, error) {
 		DbType:     "mysql",
 		ConnString: connStr,
 	}
-	return &MySQLConnection{BaseConnection: bc}, nil
+	return &Connection{BaseConnection: bc}, nil
 }
 
-func (m *MySQLConnection) Open() error {
+func (m *Connection) Open() error {
 	db, err := sql.Open("mysql", m.ConnString)
 	if err != nil {
 		return err
@@ -46,21 +46,21 @@ func (m *MySQLConnection) Open() error {
 	return nil
 }
 
-func (m *MySQLConnection) Ping() error {
+func (m *Connection) Ping() error {
 	if m.db == nil {
 		return fmt.Errorf("database is not open")
 	}
 	return m.db.Ping()
 }
 
-func (m *MySQLConnection) Close() error {
+func (m *Connection) Close() error {
 	if m.db != nil {
 		return m.db.Close()
 	}
 	return nil
 }
 
-func (m *MySQLConnection) Query(queryName string, args ...any) (any, error) {
+func (m *Connection) Query(queryName string, args ...any) (any, error) {
 	query, exists := m.Queries[queryName]
 	if !exists {
 		return nil, fmt.Errorf("query not found: %s", queryName)
@@ -68,19 +68,19 @@ func (m *MySQLConnection) Query(queryName string, args ...any) (any, error) {
 	return m.db.Query(query.SQL, args...)
 }
 
-func (m *MySQLConnection) ExecQuery(
+func (m *Connection) ExecQuery(
 	sql string,
 	args ...any,
 ) (*sql.Rows, error) {
 	return m.db.Query(sql, args...)
 }
 
-func (m *MySQLConnection) Exec(sql string, args ...any) error {
+func (m *Connection) Exec(sql string, args ...any) error {
 	_, err := m.db.Exec(sql, args...)
 	return err
 }
 
-func (m *MySQLConnection) GetTableMetadata(
+func (m *Connection) GetTableMetadata(
 	tableName string,
 ) (*db.TableMetadata, error) {
 	if m.db == nil {
@@ -144,7 +144,7 @@ func (m *MySQLConnection) GetTableMetadata(
 	return metadata, nil
 }
 
-func (m *MySQLConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
+func (m *Connection) GetForeignKeys(tableName string) ([]db.ForeignKey, error) {
 	if m.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -178,7 +178,7 @@ func (m *MySQLConnection) GetForeignKeys(tableName string) ([]db.ForeignKey, err
 	return foreignKeys, nil
 }
 
-func (m *MySQLConnection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
+func (m *Connection) GetForeignKeysReferencingTable(tableName string) ([]db.ForeignKey, error) {
 	if m.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -214,7 +214,7 @@ func (m *MySQLConnection) GetForeignKeysReferencingTable(tableName string) ([]db
 	return foreignKeys, nil
 }
 
-func (m *MySQLConnection) GetUniqueConstraints(tableName string) ([]string, error) {
+func (m *Connection) GetUniqueConstraints(tableName string) ([]string, error) {
 	if m.db == nil {
 		return nil, fmt.Errorf("database is not open")
 	}
@@ -252,7 +252,7 @@ func (m *MySQLConnection) GetUniqueConstraints(tableName string) ([]string, erro
 	return uniqueColumns, nil
 }
 
-func (m *MySQLConnection) GetInfoSQL(infoType string) string {
+func (m *Connection) GetInfoSQL(infoType string) string {
 	switch infoType {
 	case "tables":
 		return "SELECT TABLE_SCHEMA as `schema`,\n		       TABLE_NAME as name\n\t	FROM information_schema.TABLES\n\t\tWHERE TABLE_SCHEMA = DATABASE()\n\t\t  AND TABLE_TYPE = 'BASE TABLE'\n\t\tORDER BY TABLE_SCHEMA, TABLE_NAME"
@@ -263,7 +263,7 @@ func (m *MySQLConnection) GetInfoSQL(infoType string) string {
 	}
 }
 
-func (m *MySQLConnection) GetTables() ([]string, error) {
+func (m *Connection) GetTables() ([]string, error) {
 	if m.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -293,7 +293,7 @@ func (m *MySQLConnection) GetTables() ([]string, error) {
 	return tables, nil
 }
 
-func (m *MySQLConnection) GetViews() ([]string, error) {
+func (m *Connection) GetViews() ([]string, error) {
 	if m.db == nil {
 		return nil, fmt.Errorf("database not open")
 	}
@@ -322,7 +322,7 @@ func (m *MySQLConnection) GetViews() ([]string, error) {
 	return views, nil
 }
 
-func (m *MySQLConnection) BuildUpdateStatement(
+func (m *Connection) BuildUpdateStatement(
 	tableName, columnName, currentValue, pkColumn, pkValue string,
 ) string {
 	escapedValue := strings.ReplaceAll(currentValue, "'", "''")
@@ -347,7 +347,7 @@ func (m *MySQLConnection) BuildUpdateStatement(
 	)
 }
 
-func (m *MySQLConnection) BuildDeleteStatement(
+func (m *Connection) BuildDeleteStatement(
 	tableName, primaryKeyCol, pkValue string,
 ) string {
 	escapedPkValue := strings.ReplaceAll(pkValue, "'", "''")
@@ -360,7 +360,7 @@ func (m *MySQLConnection) BuildDeleteStatement(
 	)
 }
 
-func (m *MySQLConnection) GetPlaceholder(paramIndex int) string {
+func (m *Connection) GetPlaceholder(paramIndex int) string {
 	return "?"
 }
 
